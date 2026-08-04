@@ -383,6 +383,21 @@ export default function Home() {
 
   return (
     <main className="demo-stage">
+      {showSignup ? (
+        <SignupFlow
+          profile={profile}
+          onCancel={() => setShowSignup(false)}
+          onComplete={(name, interests, connectCalendar) => {
+            const newCustomInterests = interests.filter((interest) => !filterData.interests.includes(interest));
+            setProfile((current) => ({ ...current, name, interests }));
+            setCustomFilters((current) => [...new Set([...current, ...newCustomInterests])]);
+            setProfileSettings((current) => ({ ...current, calendarConnected: connectCalendar }));
+            setShowSignup(false);
+            setToast("Account setup complete");
+          }}
+        />
+      ) : (
+      <>
       <div className="phone" aria-label="Scheduler Thing mobile app demo">
         <img className="phone-frame" src="/phone-frame.png" alt="" />
         <div className="app-viewport">
@@ -484,8 +499,6 @@ export default function Home() {
 
           {showCommunityCreator && <Modal title={editingCommunity ? "Edit community" : "Create community"} onClose={() => { setShowCommunityCreator(false); setEditingCommunity(null); }}><CommunityCreator initial={editingCommunity ?? undefined} onSave={saveCommunity} /></Modal>}
 
-          {showSignup && <Modal title="Set up your account" onClose={() => setShowSignup(false)}><SignupFlow profile={profile} onComplete={(name, interests, connectCalendar) => { setProfile((current) => ({ ...current, name, interests })); setProfileSettings((current) => ({ ...current, calendarConnected: connectCalendar })); setShowSignup(false); setToast("Account setup complete"); }} /></Modal>}
-
           {confirmRemove && <Modal title={`Remove ${confirmRemove.name}?`} onClose={() => setConfirmRemove(null)}><p>They will be removed from your People list. You can add them again from a public event.</p><button className="danger wide" onClick={removeConfirmedFriend}>Remove friend</button><button className="text-button wide" onClick={() => setConfirmRemove(null)}>Cancel</button></Modal>}
 
           {selectedNotification && <Modal title={selectedNotification.title} onClose={() => setSelectedNotification(null)}><p>{selectedNotification.body}</p><div className="detail-facts"><p><span>Received</span>{selectedNotification.time} ago</p></div><button className="primary wide" onClick={() => setSelectedNotification(null)}>Done</button></Modal>}
@@ -512,6 +525,8 @@ export default function Home() {
       </div>
       <p className="demo-caption">Interactive student planning demo · all app content stays inside the device</p>
       <div className="external-actions"><button className="external-signup" onClick={() => setShowSignup(true)}>Preview sign-up flow</button><button className="external-reset" onClick={resetDemo}>Reset demo</button></div>
+      </>
+      )}
     </main>
   );
 }
@@ -676,11 +691,84 @@ function CommunityCreator({ initial, onSave }: { initial?: Community; onSave: (d
   return <div className="community-wizard"><div className="wizard-steps"><span className={step === 1 ? "active" : "done"}>1 · Details</span><span className={step === 2 ? "active" : ""}>2 · Invite friends</span></div>{step === 1 ? <form className="stack-form" onSubmit={next}><label>Community name<input name="name" required defaultValue={details.name} placeholder="Weekend Creators" /></label><label>Description<textarea name="description" required rows={3} defaultValue={details.description} placeholder="What brings this group together?" /></label><label>Tags<input name="tags" required defaultValue={details.tags.join(", ")} placeholder="Design, Career, Workshops" /></label><div className="toggle-row"><div><b>Public community</b><small>Anyone can find and join it</small></div><label className="switch-input"><input name="public" type="checkbox" defaultChecked={details.isPublic} /><i /></label></div><button className="primary wide">Continue to invites</button></form> : <div className="invite-step"><p className="privacy-note">Invite friends now, or finish with only yourself as a member.</p><div className="invite-list">{people.filter((person) => person.id !== "erin").map((person) => <button key={person.id} className={memberIds.includes(person.id) ? "selected" : ""} onClick={() => setMemberIds((current) => current.includes(person.id) ? current.filter((id) => id !== person.id) : [...current, person.id])}><Avatar id={person.id} /><span><b>{person.name}</b><small>{person.role}</small></span><i>{memberIds.includes(person.id) ? "✓" : "+"}</i></button>)}</div><div className="form-row"><button className="secondary" onClick={() => setStep(1)}>Back</button><button className="primary" onClick={() => onSave(details, memberIds)}>{initial ? "Save changes" : "Create community"}</button></div></div>}</div>;
 }
 
-function SignupFlow({ profile, onComplete }: { profile: Profile; onComplete: (name: string, interests: string[], connectCalendar: boolean) => void }) {
-  const [step, setStep] = useState(1);
+function SignupFlow({ profile, onCancel, onComplete }: { profile: Profile; onCancel: () => void; onComplete: (name: string, interests: string[], connectCalendar: boolean) => void }) {
+  type Provider = "email" | "google" | "apple";
+  const providerAccounts = {
+    google: { name: "Jordan Lee", email: "jordan.lee@university.edu", mark: "G" },
+    apple: { name: "Taylor Morgan", email: "taylor.morgan@icloud.com", mark: "●" },
+  };
+  const [step, setStep] = useState<"method" | "account" | "interests" | "calendar">("method");
+  const [provider, setProvider] = useState<Provider | null>(null);
+  const [popupProvider, setPopupProvider] = useState<"google" | "apple" | null>(null);
   const [name, setName] = useState(profile.name);
+  const [email, setEmail] = useState("");
   const [interests, setInterests] = useState(profile.interests);
-  return <div className="signup-flow"><div className="wizard-steps"><span className={step === 1 ? "active" : "done"}>1 · Account</span><span className={step === 2 ? "active" : step > 2 ? "done" : ""}>2 · Interests</span><span className={step === 3 ? "active" : ""}>3 · Calendar</span></div>{step === 1 && <form className="stack-form" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); setName(String(data.get("name"))); setStep(2); }}><label>Name<input name="name" required defaultValue={name} /></label><label>Student email<input name="email" type="email" required placeholder="you@university.edu" /></label><button className="primary wide">Continue</button></form>}{step === 2 && <div className="invite-step"><p>Choose interests for event discovery.</p><fieldset className="interest-editor">{filterData.interests.map((interest) => <button type="button" key={interest} className={interests.includes(interest) ? "selected" : ""} onClick={() => setInterests((current) => current.includes(interest) ? current.filter((item) => item !== interest) : [...current, interest])}>{interests.includes(interest) ? "✓ " : "+ "}{interest}</button>)}</fieldset><button className="primary wide" onClick={() => setStep(3)}>Continue</button></div>}{step === 3 && <div className="signup-finish"><div className="modal-illustration">▦</div><h3>Connect your university calendar</h3><p>Import classes so Scheduler Thing can find shared free time.</p><button className="primary wide" onClick={() => onComplete(name, interests, true)}>Connect and finish</button><button className="text-button wide" onClick={() => onComplete(name, interests, false)}>Skip for now</button></div>}</div>;
+  const [customInterests, setCustomInterests] = useState<string[]>([]);
+  const [interestSearch, setInterestSearch] = useState("");
+  const [error, setError] = useState("");
+  const allInterests = [...new Set([...filterData.interests, ...customInterests])];
+  const matchingInterests = allInterests.filter((interest) => interest.toLowerCase().includes(interestSearch.trim().toLowerCase()));
+  const exactInterest = allInterests.some((interest) => interest.toLowerCase() === interestSearch.trim().toLowerCase());
+  function chooseProvider(nextProvider: "google" | "apple") {
+    setPopupProvider(nextProvider);
+    setError("");
+  }
+
+  function acceptProvider() {
+    if (!popupProvider) return;
+    const account = providerAccounts[popupProvider];
+    setProvider(popupProvider);
+    setName(account.name);
+    setEmail(account.email);
+    setPopupProvider(null);
+    setStep("account");
+  }
+
+  function submitAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    if (provider === "email") {
+      const password = String(data.get("password"));
+      const confirmation = String(data.get("confirmPassword"));
+      if (password.length < 8) return setError("Use at least 8 characters for your password.");
+      if (password !== confirmation) return setError("The passwords do not match.");
+      setName(String(data.get("name")).trim());
+      setEmail(String(data.get("email")).trim());
+    } else {
+      const confirmation = String(data.get("confirmEmail")).trim().toLowerCase();
+      if (confirmation !== email.toLowerCase()) return setError("Enter the same email to confirm this account.");
+    }
+    setError("");
+    setStep("interests");
+  }
+
+  function addCustomInterest() {
+    const label = interestSearch.trim();
+    if (!label || exactInterest) return;
+    setCustomInterests((current) => [...current, label]);
+    setInterests((current) => [...new Set([...current, label])]);
+    setInterestSearch("");
+  }
+
+  return <section className="signup-stage" aria-label="Create your Scheduler Thing account">
+    <div className="signup-brand"><span>ST</span><div><p className="eyebrow">SCHEDULER THING</p><h1>Create your account</h1></div></div>
+    <button className="signup-exit" onClick={onCancel}>Back to demo</button>
+    <div className="signup-card">
+      <div className="wizard-steps"><span className={step === "method" || step === "account" ? "active" : "done"}>1 · Account</span><span className={step === "interests" ? "active" : step === "calendar" ? "done" : ""}>2 · Interests</span><span className={step === "calendar" ? "active" : ""}>3 · Calendar</span></div>
+
+      {step === "method" && <div className="auth-methods"><div className="signup-intro"><h2>Join your campus plans</h2><p>Choose how you would like to sign up. This demo does not connect to a real account.</p></div><button className="provider-button google" onClick={() => chooseProvider("google")}><i>G</i><span>Continue with Google</span></button><button className="provider-button apple" onClick={() => chooseProvider("apple")}><i>●</i><span>Continue with Apple</span></button><div className="auth-divider"><span>or</span></div><button className="provider-button email" onClick={() => { setProvider("email"); setName(""); setEmail(""); setStep("account"); }}><i>✉</i><span>Sign up with email</span></button></div>}
+
+      {step === "account" && provider === "email" && <form className="stack-form signup-account-form" onSubmit={submitAccount}><div className="signup-intro"><h2>Create your login</h2><p>Use an email you can access. Your password stays inside this local demo.</p></div><label>Name<input name="name" required autoComplete="name" defaultValue={name} placeholder="Your full name" /></label><label>Email<input name="email" type="email" required autoComplete="email" defaultValue={email} placeholder="you@university.edu" /></label><label>Password<input name="password" type="password" required minLength={8} autoComplete="new-password" placeholder="At least 8 characters" /></label><label>Confirm password<input name="confirmPassword" type="password" required minLength={8} autoComplete="new-password" placeholder="Enter it again" /></label>{error && <p className="signup-error" role="alert">{error}</p>}<div className="signup-form-actions"><button type="button" className="secondary" onClick={() => { setStep("method"); setError(""); }}>Back</button><button className="primary">Continue</button></div></form>}
+
+      {step === "account" && provider && provider !== "email" && <form className="stack-form signup-account-form" onSubmit={submitAccount}><div className="signup-intro"><span className={`provider-account-mark ${provider}`}>{providerAccounts[provider].mark}</span><h2>Confirm your {provider === "google" ? "Google" : "Apple"} email</h2><p>Your name was added from the linked account.</p></div><label>Name from account<input value={name} readOnly /></label><label>Linked email<input value={email} readOnly /></label><label>Confirm email<input name="confirmEmail" type="email" required autoComplete="email" placeholder={email} /></label>{error && <p className="signup-error" role="alert">{error}</p>}<div className="signup-form-actions"><button type="button" className="secondary" onClick={() => { setStep("method"); setProvider(null); setError(""); }}>Back</button><button className="primary">Confirm and continue</button></div></form>}
+
+      {step === "interests" && <div className="signup-interests"><div className="signup-intro"><h2>What are you into?</h2><p>Search existing interests or add one of your own. These improve Discovery recommendations.</p></div><label className="signup-search"><span>⌕</span><input autoFocus value={interestSearch} onChange={(event) => setInterestSearch(event.target.value)} placeholder="Search interests" /></label><div className="signup-interest-results">{matchingInterests.map((interest) => <button type="button" key={interest} className={interests.includes(interest) ? "selected" : ""} onClick={() => setInterests((current) => current.includes(interest) ? current.filter((item) => item !== interest) : [...current, interest])}>{interests.includes(interest) ? "✓ " : "+ "}{interest}</button>)}{!matchingInterests.length && <p>No matching interests yet.</p>}</div><button type="button" className="signup-custom-interest" disabled={!interestSearch.trim() || exactInterest} onClick={addCustomInterest}>{interestSearch.trim() && !exactInterest ? `+ Add custom “${interestSearch.trim()}”` : "Type a new interest to add it"}</button><div className="selected-interest-summary"><b>{interests.length} selected</b>{interests.length > 0 && <span>{interests.join(" · ")}</span>}</div><div className="signup-form-actions"><button className="secondary" onClick={() => setStep("account")}>Back</button><button className="primary" onClick={() => setStep("calendar")}>Continue</button></div></div>}
+
+      {step === "calendar" && <div className="signup-finish"><div className="modal-illustration">▦</div><h2>Connect your university calendar</h2><p>Import classes so Scheduler Thing can find shared free time. You can change this later in Profile.</p><button className="primary wide" onClick={() => onComplete(name, interests, true)}>Connect and enter app</button><button className="text-button wide" onClick={() => onComplete(name, interests, false)}>Skip and enter app</button></div>}
+    </div>
+
+    {popupProvider && <div className="provider-popup-layer"><button className="provider-popup-backdrop" onClick={() => setPopupProvider(null)} aria-label="Close account window" /><section className="provider-popup" role="dialog" aria-modal="true" aria-label={`${popupProvider === "google" ? "Google" : "Apple"} account selector`}><div className="fake-browser-bar"><i /><i /><i /><span>{popupProvider === "google" ? "accounts.google.com" : "appleid.apple.com"}</span></div><div className="provider-popup-content"><span className={`provider-account-mark ${popupProvider}`}>{providerAccounts[popupProvider].mark}</span><p className="eyebrow">SIMULATED ACCOUNT WINDOW</p><h2>Continue with {popupProvider === "google" ? "Google" : "Apple"}</h2><p>Scheduler Thing will receive your name and email.</p><button className="fake-account" onClick={acceptProvider}><span>{initials(providerAccounts[popupProvider].name)}</span><div><b>{providerAccounts[popupProvider].name}</b><small>{providerAccounts[popupProvider].email}</small></div><i>›</i></button><button className="text-button wide" onClick={() => setPopupProvider(null)}>Cancel</button></div></section></div>}
+  </section>;
 }
 
 function NotificationsScreen({ items, markAll, open, remove }: { items: typeof notificationSeed; markAll: () => void; open: (item: (typeof notificationSeed)[number]) => void; remove: (id: string) => void }) {

@@ -61,4 +61,12 @@ test("includes interactive filters, friends, interests, and profile settings", a
   assert.match(page, /Edit community/);
   assert.match(page, /Preview sign-up flow/);
   assert.match(page, /setShowSignup\(false\)/);
+  assert.match(page, /showSignup \?/);
+  assert.match(page, /Continue with Google/);
+  assert.match(page, /Continue with Apple/);
+  assert.match(page, /Confirm password/);
+  assert.match(page, /Confirm your .* email/);
+  assert.match(page, /provider-popup/);
+  assert.match(page, /Search interests/);
+  assert.match(page, /Add custom/);
 });
