@@ -99,4 +99,9 @@ test("includes interactive filters, friends, interests, and profile settings", a
   assert.match(page, /overlayFriendIds\.flatMap/);
   assert.match(page, /setCalendarCompareIds/);
   assert.match(css, /\.compare-friend-list/);
+  assert.match(page, /if \(id === "erin"\)/);
+  assert.match(page, /navigate\("profile"\)/);
+  assert.match(page, /function makePlanWith/);
+  assert.match(page, /setPrivateInviteIds\(\[id\]\)/);
+  assert.match(page, /onClick=\{onMakePlan\}>Make a plan with/);
 });

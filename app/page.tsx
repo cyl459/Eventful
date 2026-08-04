@@ -129,9 +129,21 @@ export default function Home() {
   }
 
   function openPerson(id: string) {
+    if (id === "erin") {
+      navigate("profile");
+      return;
+    }
     const person = personById[id];
     if (!person) return;
     setSelectedPerson(person);
+  }
+
+  function makePlanWith(id: string) {
+    setPrivateInviteIds([id]);
+    setPrivatePlan([id]);
+    setCalendarMode("week");
+    setWeekOffset(0);
+    navigate("calendar");
   }
 
   function respondToInvite(response: "accepted" | "declined" | "pending") {
@@ -448,7 +460,7 @@ export default function Home() {
 
             <div className="screen-scroll">
               {selectedCommunity && !selectedPerson && <CommunityDetail community={selectedCommunity} isHost={selectedCommunity.hostId === "erin"} onOpenPerson={openPerson} onToggle={() => { toggleCommunity(selectedCommunity.id); setSelectedCommunity((current) => current ? { ...current, joined: !current.joined, memberIds: current.joined ? current.memberIds.filter((id) => id !== "erin") : [...new Set([...current.memberIds, "erin"])] } : current); }} onEdit={() => { setEditingCommunity(selectedCommunity); setShowCommunityCreator(true); }} />}
-              {selectedPerson && <PersonProfile person={selectedPerson} isFriend={friendIds.includes(selectedPerson.id)} onAddFriend={() => { setFriendIds((current) => [...new Set([...current, selectedPerson.id])]); setToast(`${selectedPerson.name} added as a friend`); }} onRemoveFriend={() => setConfirmRemove(selectedPerson)} />}
+              {selectedPerson && <PersonProfile person={selectedPerson} isFriend={friendIds.includes(selectedPerson.id)} onAddFriend={() => { setFriendIds((current) => [...new Set([...current, selectedPerson.id])]); setToast(`${selectedPerson.name} added as a friend`); }} onRemoveFriend={() => setConfirmRemove(selectedPerson)} onMakePlan={() => makePlanWith(selectedPerson.id)} />}
               {screen === "calendar" && !selectedEvent && !selectedPerson && (
                 <CalendarScreen
                   events={calendarEvents}
@@ -831,8 +843,8 @@ function ProfileScreen({ activeFilters, profile, settings, edit, openSettings }:
   return <section className="profile-screen"><div className="profile-card"><span className="avatar profile-avatar" style={{ background: personById.erin.color }}>{initials(profile.name)}</span><h2>{profile.name}</h2><p>she/her · Interaction Design, Year 2</p>{profile.bio && <p className="profile-bio">{profile.bio}</p>}<button className="secondary edit-profile" onClick={edit}>Edit profile</button><div className="tag-row">{profile.interests.map((interest) => <span key={interest}>{interest}</span>)}</div></div><div className="settings-list"><button onClick={() => openSettings("calendar")}><span>▦</span><div><b>Connected calendars</b><small>{settings.calendarConnected ? "University calendar · Synced" : "Not connected"}</small></div><i>›</i></button><button onClick={() => openSettings("availability")}><span>◒</span><div><b>Availability privacy</b><small>{settings.availabilityPrivacy === "connections" ? "Visible to connections" : "Only visible to you"}</small></div><i>›</i></button><button onClick={() => openSettings("filters")}><span>⌕</span><div><b>Discover filters</b><small>{activeFilters.length ? `${activeFilters.length} active` : "No filters"}</small></div><i>›</i></button><button onClick={() => openSettings("notifications")}><span>♢</span><div><b>Notifications</b><small>{settings.eventNotifications || settings.friendNotifications ? "Configured" : "Off"}</small></div><i>›</i></button><button onClick={() => openSettings("privacy")}><span>?</span><div><b>Privacy & safety</b><small>{settings.hideAttendees ? "Attendee list hidden" : "Standard protections"}</small></div><i>›</i></button></div></section>;
 }
 
-function PersonProfile({ person, isFriend, onAddFriend, onRemoveFriend }: { person: Person; isFriend: boolean; onAddFriend: () => void; onRemoveFriend: () => void }) {
-  return <section className="person-profile"><div className="profile-card"><Avatar id={person.id} /><h2>{person.name} {person.verified && <span className="verified">✓</span>}</h2><p>{person.pronouns} · {person.role}</p><div className="tag-row">{person.interests.map((interest) => <span key={interest}>{interest}</span>)}</div>{person.id !== "erin" && <button className={isFriend ? "secondary profile-friend-action" : "primary profile-friend-action"} onClick={isFriend ? onRemoveFriend : onAddFriend}>{isFriend ? "Remove Friend" : "+ Add as Friend"}</button>}</div><div className="shared-card"><p className="eyebrow">NEXT SHARED FREE TIME</p><h3>Saturday · 2:00–5:00 PM</h3><p>Calendar details stay private.</p><button className="primary wide">Make a plan with {person.name.split(" ")[0]}</button></div></section>;
+function PersonProfile({ person, isFriend, onAddFriend, onRemoveFriend, onMakePlan }: { person: Person; isFriend: boolean; onAddFriend: () => void; onRemoveFriend: () => void; onMakePlan: () => void }) {
+  return <section className="person-profile"><div className="profile-card"><Avatar id={person.id} /><h2>{person.name} {person.verified && <span className="verified">✓</span>}</h2><p>{person.pronouns} · {person.role}</p><div className="tag-row">{person.interests.map((interest) => <span key={interest}>{interest}</span>)}</div>{person.id !== "erin" && <button className={isFriend ? "secondary profile-friend-action" : "primary profile-friend-action"} onClick={isFriend ? onRemoveFriend : onAddFriend}>{isFriend ? "Remove Friend" : "+ Add as Friend"}</button>}</div><div className="shared-card"><p className="eyebrow">NEXT SHARED FREE TIME</p><h3>Saturday · 2:00–5:00 PM</h3><p>Calendar details stay private.</p><button className="primary wide" onClick={onMakePlan}>Make a plan with {person.name.split(" ")[0]}</button></div></section>;
 }
 
 function FilterModal({ search, setSearch, options, active, toggle, distanceKm, setDistanceKm, availabilityOnly, setAvailabilityOnly, addCustom, clear, close }: { search: string; setSearch: (value: string) => void; options: { id: string; label: string; kind: string }[]; active: string[]; toggle: (id: string) => void; distanceKm: number; setDistanceKm: (value: number) => void; availabilityOnly: boolean; setAvailabilityOnly: (value: boolean) => void; customFilters: string[]; addCustom: (label: string) => void; clear: () => void; close: () => void }) {
