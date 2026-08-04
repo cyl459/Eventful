@@ -138,9 +138,11 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .event-copy h3 { margin: 3px 0 4px; font-size: 13px; line-height: 1.15; padding-right: 2px; }
 .event-copy > p { margin: 2px 0; color: var(--muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fit-row { height: 15px; }
-.fit, .conflict { display: inline-block; border-radius: 8px; padding: 3px 6px; font-size: 7px; line-height: 1; font-weight: 800; }
+.fit-row span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fit, .conflict, .availability-check { display: inline-block; border-radius: 8px; padding: 3px 6px; font-size: 7px; line-height: 1; font-weight: 800; }
 .fit { background: #e6f3d8; color: #477121; }
 .conflict { background: #fff0d6; color: #9b6114; }
+.availability-check { background: #edf0ee; color: #5f6964; }
 .mini-meta { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--muted); font-size: 8px; }
 .avatar-stack { display: flex; padding-left: 4px; }
 .avatar-stack .avatar { width: 19px; height: 19px; margin-left: -5px; border: 2px solid white; font-size: 6px; }

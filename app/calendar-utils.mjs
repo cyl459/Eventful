@@ -17,3 +17,12 @@ export function mergeAvailability(slots) {
       return merged;
     }, /** @type {T[]} */ ([]));
 }
+
+/** Find the first calendar event that overlaps a proposed time. */
+export function findScheduleConflict(slot, events, ignoredIds = []) {
+  return events.find((event) => !ignoredIds.includes(event.id)
+    && (event.week ?? 0) === slot.week
+    && event.day === slot.day
+    && event.start < slot.end
+    && event.end > slot.start);
+}

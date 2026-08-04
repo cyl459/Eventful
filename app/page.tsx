@@ -7,7 +7,7 @@ import filterData from "./data/filters.json";
 import calendarSeed from "./data/calendar.json";
 import notificationSeed from "./data/notifications.json";
 import communitySeed from "./data/communities.json";
-import { mergeAvailability } from "./calendar-utils.mjs";
+import { findScheduleConflict, mergeAvailability } from "./calendar-utils.mjs";
 
 type Screen = "calendar" | "discover" | "create" | "people" | "profile" | "notifications";
 type PublicEvent = Omit<(typeof eventsSeed)[number], "recurrence"> & { recurrence: string | null; invitedCommunityIds?: string[] };
@@ -179,15 +179,22 @@ export default function Home() {
     ...[...filterData.interests, ...customFilters].map((label) => ({ id: `interest:${label}`, label, kind: "Interest" })),
   ], [customFilters]);
 
+  const eventsWithSchedule = useMemo(() => events.map((event) => {
+    const position = publicEventCalendarPosition(event);
+    const overlap = findScheduleConflict({ ...position, start: timeLabelToNumber(event.startLabel), end: timeLabelToNumber(event.endLabel) }, calendarEvents, [`joined-${event.id}`, `calendar-${event.id}`]);
+    const conflict = overlap ? `${overlap.name} ${formatHour(overlap.start)}–${formatHour(overlap.end)}` : event.conflict;
+    return { ...event, conflict, fitsAvailability: event.fitsAvailability && !conflict };
+  }), [events, calendarEvents]);
+
   const filteredEvents = useMemo(() => {
     const interests = activeFilters.filter((id) => id.startsWith("interest:")).map((id) => id.slice(9).toLowerCase());
-    return events.filter((event) => {
+    return eventsWithSchedule.filter((event) => {
       if (distanceKm < 50 && event.distanceKm > distanceKm) return false;
       if (activeFilters.includes("availability") && !event.fitsAvailability) return false;
       if (interests.length && !event.interests.some((interest) => interests.includes(interest.toLowerCase()))) return false;
       return true;
     });
-  }, [events, activeFilters, distanceKm]);
+  }, [eventsWithSchedule, activeFilters, distanceKm]);
 
   const displayFilters = useMemo(() => distanceKm < 50 ? [`distance:${distanceKm}`, ...activeFilters] : activeFilters, [distanceKm, activeFilters]);
   const filterLabel = (id: string) => id.startsWith("distance:") ? `${id.slice(9)} km` : id === "availability" ? "Fits availability" : filterOptions.find((item) => item.id === id)?.label ?? id;
@@ -620,7 +627,7 @@ function DiscoverScreen({ events, activeFilters, filterLabel, removeFilter, open
       {events.map((event) => <article className="event-card" key={event.id}>
         <button className="event-main" onClick={() => openEvent(event)}>
           <div className="date-tile"><b>{event.date.split(", ")[0]}</b><span>{event.date.split(" ").at(-1)}</span></div>
-          <div className="event-copy"><div className="fit-row">{event.fitsAvailability ? <span className="fit">✓ Fits your availability</span> : <span className="conflict">Schedule check</span>}</div><h3>{event.name}</h3><p>{event.startLabel}–{event.endLabel} · {event.distanceKm} km</p><p>{event.location}</p><div className="mini-meta"><AvatarStack ids={event.participantIds} /><span>{event.participantIds.length} going</span>{event.recurrence && <span>↻ {event.recurrence}</span>}</div></div>
+          <div className="event-copy"><div className="fit-row"><EventScheduleStatus event={event} /></div><h3>{event.name}</h3><p>{event.startLabel}–{event.endLabel} · {event.distanceKm} km</p><p>{event.location}</p><div className="mini-meta"><AvatarStack ids={event.participantIds} /><span>{event.participantIds.length} going</span>{event.recurrence && <span>↻ {event.recurrence}</span>}</div></div>
         </button>
         <button className={`save-button ${saved.includes(event.id) ? "saved" : ""}`} onClick={() => toggleSaved(event.id)} aria-label="Save event">{saved.includes(event.id) ? "♥" : "♡"}</button>
       </article>)}
@@ -632,7 +639,7 @@ function DiscoverScreen({ events, activeFilters, filterLabel, removeFilter, open
 function EventDetail({ event, joined, saved, friendIds, communities, onJoin, onSave, onOpenPerson, onEdit }: { event: PublicEvent; joined: boolean; saved: boolean; friendIds: string[]; communities: Community[]; onJoin: () => void; onSave: () => void; onOpenPerson: (id: string) => void; onEdit?: () => void }) {
   const organizer = personById[event.organizerId];
   return <article className="event-detail">
-    <div className="event-title-row"><div><span className={event.fitsAvailability ? "fit" : "conflict"}>{event.fitsAvailability ? "✓ Fits your availability" : "! Schedule conflict"}</span><h2>{event.name}</h2></div><button className="save-button detail-save" onClick={onSave}>{saved ? "♥" : "♡"}</button></div>
+    <div className="event-title-row"><div><EventScheduleStatus event={event} detail /><h2>{event.name}</h2></div><button className="save-button detail-save" onClick={onSave}>{saved ? "♥" : "♡"}</button></div>
     <p className="lead">{event.summary}</p>
     <div className="fact-card"><p><i>◷</i><span><b>{event.date}</b>{event.startLabel}–{event.endLabel}{event.recurrence && <small>↻ {event.recurrence}</small>}</span></p><p><i>⌖</i><span><b>{event.location}</b>{event.distanceKm} km away · In person</span></p></div>
     {event.conflict && <div className="conflict-card"><b>Calendar conflict</b><p>{event.conflict}. You can still join.</p></div>}
@@ -643,6 +650,12 @@ function EventDetail({ event, joined, saved, friendIds, communities, onJoin, onS
     {onEdit && <button className="secondary wide edit-public" onClick={onEdit}>Edit this event</button>}
     <button className={`sticky-join ${joined ? "joined" : ""}`} onClick={onJoin}>{joined ? "✓ Joined · Leave event" : "Join event"}</button>
   </article>;
+}
+
+function EventScheduleStatus({ event, detail = false }: { event: PublicEvent; detail?: boolean }) {
+  if (event.conflict) return <span className="conflict">{detail ? "! Schedule conflict" : `! ${event.conflict}`}</span>;
+  if (event.fitsAvailability) return <span className="fit">✓ Fits your availability</span>;
+  return <span className="availability-check">Outside saved availability</span>;
 }
 
 function CreateScreen({ kind, setKind, onSubmit, inviteIds, toggleInvite, friends, communities, continuePrivate }: { kind: "private" | "public"; setKind: (kind: "private" | "public") => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; inviteIds: string[]; toggleInvite: (id: string) => void; friends: Person[]; communities: Community[]; continuePrivate: () => void }) {
