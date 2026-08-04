@@ -9,9 +9,11 @@ import notificationSeed from "./data/notifications.json";
 import { mergeAvailability } from "./calendar-utils.mjs";
 
 type Screen = "calendar" | "discover" | "create" | "people" | "profile" | "notifications";
-type PublicEvent = (typeof eventsSeed)[number];
-type CalendarEvent = { id: string; name: string; day: number; start: number; end: number; kind: "class" | "personal" | "public"; location: string; week?: number };
+type PublicEvent = Omit<(typeof eventsSeed)[number], "recurrence"> & { recurrence: string | null };
+type CalendarEvent = { id: string; name: string; day: number; start: number; end: number; kind: "class" | "personal" | "private" | "public"; location: string; week?: number; recurrence?: string | null; inviteeIds?: string[] };
 type Availability = { id: string; day: number; start: number; end: number; week?: number };
+type Slot = { day: number; start: number; end: number; week: number };
+type EventEditor = { kind: "personal" | "private"; event?: CalendarEvent; slot?: Slot; inviteeIds?: string[] };
 type Person = (typeof people)[number];
 type Profile = { name: string; bio: string; interests: string[] };
 type ProfileSettings = { calendarConnected: boolean; availabilityPrivacy: "connections" | "private"; eventNotifications: boolean; friendNotifications: boolean; hideAttendees: boolean };
@@ -25,13 +27,14 @@ const personById = Object.fromEntries(people.map((person) => [person.id, person]
 const navItems: { id: Screen; icon: string; label: string }[] = [
   { id: "calendar", icon: "▦", label: "Calendar" },
   { id: "discover", icon: "⌕", label: "Discover" },
+  { id: "create", icon: "+", label: "Create" },
   { id: "people", icon: "♧", label: "People" },
   { id: "profile", icon: "◉", label: "Profile" },
 ];
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("calendar");
-  const [events, setEvents] = useState<PublicEvent[]>(eventsSeed);
+  const [events, setEvents] = useState<PublicEvent[]>(eventsSeed as PublicEvent[]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(calendarSeed.events as CalendarEvent[]);
   const [availability, setAvailability] = useState<Availability[]>(calendarSeed.availability as Availability[]);
   const [availabilityOn, setAvailabilityOn] = useState(true);
@@ -47,7 +50,14 @@ export default function Home() {
   const [showAvailabilityEditor, setShowAvailabilityEditor] = useState(false);
   const [showEventSheet, setShowEventSheet] = useState<CalendarEvent | null>(null);
   const [joinPending, setJoinPending] = useState<PublicEvent | null>(null);
-  const [createKind, setCreateKind] = useState<"personal" | "public">("personal");
+  const [createKind, setCreateKind] = useState<"private" | "public">("private");
+  const [privateInviteIds, setPrivateInviteIds] = useState<string[]>([]);
+  const [privatePlan, setPrivatePlan] = useState<string[] | null>(null);
+  const [eventEditor, setEventEditor] = useState<EventEditor | null>(null);
+  const [editingPublic, setEditingPublic] = useState<PublicEvent | null>(null);
+  const [slotChoice, setSlotChoice] = useState<Slot | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<Person | null>(null);
+  const [selectedNotification, setSelectedNotification] = useState<(typeof notificationSeed)[number] | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [calendarMode, setCalendarMode] = useState<"week" | "events">("week");
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
@@ -70,13 +80,14 @@ export default function Home() {
         setSaved(state.saved ?? []);
         setActiveFilters(state.activeFilters ?? []);
         setCustomFilters(state.customFilters ?? []);
-        setEvents(state.events ?? eventsSeed);
+        setEvents(state.events ?? eventsSeed as PublicEvent[]);
         setCalendarEvents(state.calendarEvents ?? calendarSeed.events);
         setAvailability(mergeAvailability(state.availability ?? calendarSeed.availability));
         setDistanceKm(state.distanceKm ?? 50);
         setFriendIds(state.friendIds ?? ["maya", "ryn", "mark"]);
         setProfile({ name: state.profile?.name ?? "Erin Chen", bio: state.profile?.bio ?? "", interests: state.profile?.interests ?? [...personById.erin.interests] });
         setProfileSettings(state.profileSettings ?? { calendarConnected: true, availabilityPrivacy: "connections", eventNotifications: true, friendNotifications: true, hideAttendees: false });
+        setNotifications(state.notifications ?? notificationSeed);
       } catch {
         localStorage.removeItem("scheduler-demo");
       }
@@ -86,8 +97,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem("scheduler-demo", JSON.stringify({ joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings }));
-  }, [hydrated, joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings]);
+    localStorage.setItem("scheduler-demo", JSON.stringify({ joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings, notifications }));
+  }, [hydrated, joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings, notifications]);
 
   useEffect(() => {
     if (!toast) return;
@@ -131,12 +142,15 @@ export default function Home() {
     setActiveFilters([]);
     setDistanceKm(50);
     setCustomFilters([]);
-    setEvents(eventsSeed);
+    setEvents(eventsSeed as PublicEvent[]);
     setCalendarEvents(calendarSeed.events as CalendarEvent[]);
     setAvailability(calendarSeed.availability as Availability[]);
     setFriendIds(["maya", "ryn", "mark"]);
     setProfile({ name: "Erin Chen", bio: "", interests: [...personById.erin.interests] });
     setProfileSettings({ calendarConnected: true, availabilityPrivacy: "connections", eventNotifications: true, friendNotifications: true, hideAttendees: false });
+    setNotifications(notificationSeed);
+    setPrivatePlan(null);
+    setEventEditor(null);
     setWeekOffset(0);
     setShowPrompt(false);
     setToast("Demo reset");
@@ -196,9 +210,10 @@ export default function Home() {
       day: Number(data.get("day")),
       start,
       end,
-      week: weekOffset,
+      week: slotChoice?.week ?? weekOffset,
     }]));
     setShowAvailabilityEditor(false);
+    setSlotChoice(null);
     setAvailabilityOn(true);
     setToast("Availability added");
   }
@@ -213,23 +228,10 @@ export default function Home() {
       setToast("End time must be after start time");
       return;
     }
-    if (createKind === "personal") {
-      setCalendarEvents((current) => [...current, {
-        id: `personal-${Date.now()}`,
-        name,
-        day: Number(data.get("day")),
-        start,
-        end,
-        kind: "personal",
-        location: String(data.get("location")),
-        week: weekOffset,
-      }]);
-      setToast("Personal event added");
-      navigate("calendar");
-    } else {
-      const date = String(data.get("date"));
-      const calendarPosition = dateToCalendarPosition(date);
-      const created: PublicEvent = {
+    const date = String(data.get("date"));
+    const calendarPosition = dateToCalendarPosition(date);
+    const selectedInterests = data.getAll("interests").map(String);
+    const created: PublicEvent = {
         id: `event-${Date.now()}`,
         name,
         summary: String(data.get("summary")),
@@ -240,15 +242,15 @@ export default function Home() {
         endLabel: formatHour(end),
         location: String(data.get("location")),
         distanceKm: 0,
-        interests: [String(data.get("interest"))],
+        interests: selectedInterests.length ? selectedInterests : ["Community"],
         participantIds: ["erin"],
         fitsAvailability: true,
         conflict: null,
         recurrence: data.get("recurring") ? String(data.get("recurrence")) : null,
         status: "published",
-      };
-      setEvents((current) => [created, ...current]);
-      setCalendarEvents((current) => [...current, {
+    };
+    setEvents((current) => [created, ...current]);
+    setCalendarEvents((current) => [...current, {
         id: `calendar-${created.id}`,
         name,
         day: calendarPosition.day,
@@ -257,11 +259,78 @@ export default function Home() {
         end,
         kind: "public",
         location: created.location,
-      }]);
-      setToast("Public event published to everyone");
-      setSelectedEvent(created);
-      setScreen("discover");
-    }
+        recurrence: created.recurrence,
+    }]);
+    setToast("Public event published to everyone");
+    setSelectedEvent(created);
+    setScreen("discover");
+  }
+
+  function saveCalendarEvent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!eventEditor) return;
+    const data = new FormData(event.currentTarget);
+    const start = timeToNumber(String(data.get("start")));
+    const end = timeToNumber(String(data.get("end")));
+    if (end <= start) return setToast("End time must be after start time");
+    const existing = eventEditor.event;
+    const savedEvent: CalendarEvent = {
+      id: existing?.id ?? `${eventEditor.kind}-${Date.now()}`,
+      name: String(data.get("name")).trim(),
+      day: Number(data.get("day")),
+      start,
+      end,
+      kind: eventEditor.kind,
+      location: String(data.get("location")).trim(),
+      week: eventEditor.slot?.week ?? existing?.week ?? weekOffset,
+      recurrence: data.get("recurring") ? String(data.get("recurrence")) : null,
+      inviteeIds: eventEditor.inviteeIds ?? existing?.inviteeIds,
+    };
+    setCalendarEvents((current) => existing ? current.map((item) => item.id === existing.id ? savedEvent : item) : [...current, savedEvent]);
+    setEventEditor(null);
+    setPrivatePlan(null);
+    setSlotChoice(null);
+    setCalendarMode("week");
+    setScreen("calendar");
+    setToast(existing ? "Event updated" : eventEditor.kind === "private" ? "Private invitations sent" : "Personal event added");
+  }
+
+  function savePublicEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingPublic) return;
+    const data = new FormData(event.currentTarget);
+    const date = String(data.get("date"));
+    const start = timeToNumber(String(data.get("start")));
+    const end = timeToNumber(String(data.get("end")));
+    if (end <= start) return setToast("End time must be after start time");
+    const interests = data.getAll("interests").map(String);
+    const updated = { ...editingPublic, name: String(data.get("name")), summary: String(data.get("summary")), description: String(data.get("description")), date: formatInputDate(date), startLabel: formatHour(start), endLabel: formatHour(end), location: String(data.get("location")), interests: interests.length ? interests : editingPublic.interests, recurrence: data.get("recurring") ? String(data.get("recurrence")) : null };
+    const position = dateToCalendarPosition(date);
+    setEvents((current) => current.map((item) => item.id === updated.id ? updated : item));
+    setCalendarEvents((current) => current.map((item) => item.id === `calendar-${updated.id}` ? { ...item, name: updated.name, day: position.day, week: position.week, start, end, location: updated.location, recurrence: updated.recurrence } : item));
+    setSelectedEvent(updated);
+    setEditingPublic(null);
+    setToast("Public event updated");
+  }
+
+  function choosePrivateTime() {
+    if (!privateInviteIds.length) return setToast("Choose at least one person");
+    setPrivatePlan(privateInviteIds);
+    setCalendarMode("week");
+    setWeekOffset(0);
+    navigate("calendar");
+  }
+
+  function handleSlotSelected(slot: Slot) {
+    if (privatePlan) setEventEditor({ kind: "private", slot, inviteeIds: privatePlan });
+    else setSlotChoice(slot);
+  }
+
+  function removeConfirmedFriend() {
+    if (!confirmRemove) return;
+    setFriendIds((current) => current.filter((id) => id !== confirmRemove.id));
+    setToast(`${confirmRemove.name} removed`);
+    setConfirmRemove(null);
   }
 
   const currentDays = getWeekDays(weekOffset);
@@ -293,7 +362,7 @@ export default function Home() {
             </header>
 
             <div className="screen-scroll">
-              {selectedPerson && <PersonProfile person={selectedPerson} isFriend={friendIds.includes(selectedPerson.id)} onAddFriend={() => { setFriendIds((current) => [...new Set([...current, selectedPerson.id])]); setToast(`${selectedPerson.name} added as a friend`); }} onRemoveFriend={() => { setFriendIds((current) => current.filter((id) => id !== selectedPerson.id)); setToast(`${selectedPerson.name} removed`); }} />}
+              {selectedPerson && <PersonProfile person={selectedPerson} isFriend={friendIds.includes(selectedPerson.id)} onAddFriend={() => { setFriendIds((current) => [...new Set([...current, selectedPerson.id])]); setToast(`${selectedPerson.name} added as a friend`); }} onRemoveFriend={() => setConfirmRemove(selectedPerson)} />}
               {screen === "calendar" && !selectedEvent && !selectedPerson && (
                 <CalendarScreen
                   events={calendarEvents}
@@ -305,10 +374,13 @@ export default function Home() {
                   setAvailabilityOn={setAvailabilityOn}
                   setShowAvailabilityEditor={setShowAvailabilityEditor}
                   setShowEventSheet={setShowEventSheet}
-                  addPersonal={() => { setCreateKind("personal"); setScreen("create"); }}
-                  createEvent={() => { setCreateKind("public"); setScreen("create"); }}
+                  addPersonal={() => setEventEditor({ kind: "personal" })}
+                  createEvent={() => { setCreateKind("private"); setScreen("create"); }}
                   mode={calendarMode}
                   setMode={setCalendarMode}
+                  privatePlan={privatePlan}
+                  onCancelPrivate={() => { setPrivatePlan(null); setPrivateInviteIds([]); }}
+                  onSlotSelected={handleSlotSelected}
                 />
               )}
               {screen === "discover" && !selectedEvent && !selectedPerson && (
@@ -324,16 +396,16 @@ export default function Home() {
                 />
               )}
               {selectedEvent && !selectedPerson && (
-                <EventDetail event={selectedEvent} joined={joined.includes(selectedEvent.id)} saved={saved.includes(selectedEvent.id)} friendIds={friendIds} onJoin={() => joinEvent(selectedEvent)} onSave={() => setSaved((current) => current.includes(selectedEvent.id) ? current.filter((id) => id !== selectedEvent.id) : [...current, selectedEvent.id])} onOpenPerson={openPerson} />
+                <EventDetail event={selectedEvent} joined={joined.includes(selectedEvent.id)} saved={saved.includes(selectedEvent.id)} friendIds={friendIds} onJoin={() => joinEvent(selectedEvent)} onSave={() => setSaved((current) => current.includes(selectedEvent.id) ? current.filter((id) => id !== selectedEvent.id) : [...current, selectedEvent.id])} onOpenPerson={openPerson} onEdit={selectedEvent.organizerId === "erin" ? () => setEditingPublic(selectedEvent) : undefined} />
               )}
-              {screen === "create" && !selectedEvent && !selectedPerson && <CreateScreen kind={createKind} setKind={setCreateKind} onSubmit={createEvent} days={currentDays} />}
-              {screen === "people" && !selectedEvent && !selectedPerson && <PeopleScreen friendIds={friendIds} onCreate={() => { setCreateKind("personal"); navigate("create"); }} onOpenPerson={openPerson} onRemove={(id) => { setFriendIds((current) => current.filter((item) => item !== id)); setToast("Friend removed"); }} />}
-              {screen === "notifications" && !selectedEvent && !selectedPerson && <NotificationsScreen items={notifications} markAll={() => setNotifications((current) => current.map((item) => ({ ...item, unread: false })))} />}
-              {screen === "profile" && !selectedEvent && !selectedPerson && <ProfileScreen activeFilters={displayFilters} resetDemo={resetDemo} profile={profile} settings={profileSettings} edit={() => { setEditInterests(profile.interests); setShowProfileEditor(true); }} openSettings={(panel) => panel === "filters" ? setShowFilters(true) : setSettingsPanel(panel)} />}
+              {screen === "create" && !selectedEvent && !selectedPerson && <CreateScreen kind={createKind} setKind={setCreateKind} onSubmit={createEvent} inviteIds={privateInviteIds} toggleInvite={(id) => setPrivateInviteIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} friends={people.filter((person) => friendIds.includes(person.id))} continuePrivate={choosePrivateTime} />}
+              {screen === "people" && !selectedEvent && !selectedPerson && <PeopleScreen friendIds={friendIds} onCreate={() => setEventEditor({ kind: "personal" })} onOpenPerson={openPerson} onRemove={(id) => setConfirmRemove(personById[id])} />}
+              {screen === "notifications" && !selectedEvent && !selectedPerson && <NotificationsScreen items={notifications} markAll={() => setNotifications((current) => current.map((item) => ({ ...item, unread: false })))} open={(item) => { setNotifications((current) => current.map((notification) => notification.id === item.id ? { ...notification, unread: false } : notification)); setSelectedNotification(item); }} remove={(id) => setNotifications((current) => current.filter((item) => item.id !== id))} />}
+              {screen === "profile" && !selectedEvent && !selectedPerson && <ProfileScreen activeFilters={displayFilters} profile={profile} settings={profileSettings} edit={() => { setEditInterests(profile.interests); setShowProfileEditor(true); }} openSettings={(panel) => panel === "filters" ? setShowFilters(true) : setSettingsPanel(panel)} />}
             </div>
 
             <nav className="bottom-nav" aria-label="Primary navigation">
-              {navItems.map((item) => <button key={item.id} className={screen === item.id ? "active" : ""} onClick={() => navigate(item.id)}><span>{item.icon}</span><small>{item.label}</small></button>)}
+              {navItems.map((item) => <button key={item.id} className={`${screen === item.id ? "active" : ""} ${item.id === "create" ? "create-nav" : ""}`} onClick={() => navigate(item.id)}><span>{item.icon}</span><small>{item.label}</small></button>)}
             </nav>
           </div>
 
@@ -349,10 +421,10 @@ export default function Home() {
 
           {showFilters && <FilterModal search={filterSearch} setSearch={setFilterSearch} options={filterOptions} active={activeFilters} toggle={toggleFilter} distanceKm={distanceKm} setDistanceKm={setDistanceKm} availabilityOnly={activeFilters.includes("availability")} setAvailabilityOnly={(value) => setActiveFilters((current) => value ? [...new Set([...current, "availability"])] : current.filter((id) => id !== "availability"))} customFilters={customFilters} addCustom={(label) => { setCustomFilters((current) => current.includes(label) ? current : [...current, label]); toggleFilter(`interest:${label}`); setFilterSearch(""); }} clear={() => { setActiveFilters([]); setDistanceKm(50); }} close={() => setShowFilters(false)} />}
 
-          {showAvailabilityEditor && <Modal title="Add availability" onClose={() => setShowAvailabilityEditor(false)}>
+          {showAvailabilityEditor && <Modal title="Add availability" onClose={() => { setShowAvailabilityEditor(false); setSlotChoice(null); }}>
             <form className="stack-form" onSubmit={addAvailability}>
-              <label>Day<select name="day" defaultValue="3">{currentDays.map((day, index) => <option value={index} key={day.full}>{day.label}</option>)}</select></label>
-              <div className="form-row"><label>From<input name="start" type="time" defaultValue="17:00" /></label><label>Until<input name="end" type="time" defaultValue="20:00" /></label></div>
+              <label>Day<select name="day" defaultValue={slotChoice?.day ?? 3}>{currentDays.map((day, index) => <option value={index} key={day.full}>{day.label}</option>)}</select></label>
+              <div className="form-row"><label>From<input name="start" type="time" defaultValue={numberToTime(slotChoice?.start ?? 17)} /></label><label>Until<input name="end" type="time" defaultValue={numberToTime(slotChoice?.end ?? 20)} /></label></div>
               <label className="check"><input type="checkbox" defaultChecked /> Repeat weekly</label>
               <p className="privacy-note">Connections see that you’re free, never what is underneath.</p>
               <button className="primary wide">Save availability</button>
@@ -360,9 +432,20 @@ export default function Home() {
           </Modal>}
 
           {showEventSheet && <Modal title={showEventSheet.name} onClose={() => setShowEventSheet(null)}>
-            <div className="detail-facts"><p><span>Time</span>{getWeekDays(showEventSheet.week ?? 0)[showEventSheet.day].label} · {formatHour(showEventSheet.start)}–{formatHour(showEventSheet.end)}</p><p><span>Location</span>{showEventSheet.location}</p><p><span>Calendar</span>{showEventSheet.kind === "class" ? "Imported classes" : showEventSheet.kind === "public" ? "Hosted public event" : "Personal"}</p></div>
+            <div className="detail-facts"><p><span>Time</span>{getWeekDays(showEventSheet.week ?? 0)[showEventSheet.day].label} · {formatHour(showEventSheet.start)}–{formatHour(showEventSheet.end)}</p><p><span>Location</span>{showEventSheet.location}</p><p><span>Calendar</span>{showEventSheet.kind === "class" ? "Imported classes" : showEventSheet.kind === "public" ? "Hosted public event" : showEventSheet.kind === "private" ? `Private · ${showEventSheet.inviteeIds?.length ?? 0} invited` : "Personal"}</p>{showEventSheet.recurrence && <p><span>Repeats</span>{showEventSheet.recurrence}</p>}</div>
+            {showEventSheet.kind !== "class" && !showEventSheet.id.startsWith("joined-") && <button className="secondary wide" onClick={() => { setEventEditor({ kind: showEventSheet.kind === "private" ? "private" : "personal", event: showEventSheet, inviteeIds: showEventSheet.inviteeIds }); setShowEventSheet(null); }}>Edit event</button>}
             <button className="primary wide" onClick={() => setShowEventSheet(null)}>Done</button>
           </Modal>}
+
+          {slotChoice && !showAvailabilityEditor && <Modal title="Use selected time" onClose={() => setSlotChoice(null)}><p>{currentDays[slotChoice.day].label} · {formatHour(slotChoice.start)}–{formatHour(slotChoice.end)}</p><button className="primary wide" onClick={() => { setEventEditor({ kind: "personal", slot: slotChoice }); setSlotChoice(null); }}>Create personal event</button><button className="secondary wide" onClick={() => setShowAvailabilityEditor(true)}>Create availability</button></Modal>}
+
+          {eventEditor && <Modal title={eventEditor.event ? "Edit event" : eventEditor.kind === "private" ? "Finish private event" : "Create personal event"} onClose={() => { setEventEditor(null); if (eventEditor.kind === "private") setPrivatePlan(null); }}><CalendarEventForm editor={eventEditor} days={currentDays} onSubmit={saveCalendarEvent} /></Modal>}
+
+          {editingPublic && <Modal title="Edit public event" onClose={() => setEditingPublic(null)}><PublicEventForm event={editingPublic} onSubmit={savePublicEdit} /></Modal>}
+
+          {confirmRemove && <Modal title={`Remove ${confirmRemove.name}?`} onClose={() => setConfirmRemove(null)}><p>They will be removed from your People list. You can add them again from a public event.</p><button className="danger wide" onClick={removeConfirmedFriend}>Remove friend</button><button className="text-button wide" onClick={() => setConfirmRemove(null)}>Cancel</button></Modal>}
+
+          {selectedNotification && <Modal title={selectedNotification.title} onClose={() => setSelectedNotification(null)}><p>{selectedNotification.body}</p><div className="detail-facts"><p><span>Received</span>{selectedNotification.time} ago</p></div><button className="primary wide" onClick={() => setSelectedNotification(null)}>Done</button></Modal>}
 
           {joinPending && <Modal title="You have a conflict" onClose={() => setJoinPending(null)}>
             <p className="conflict-copy">{joinPending.conflict}</p>
@@ -385,15 +468,46 @@ export default function Home() {
         </div>
       </div>
       <p className="demo-caption">Interactive student planning demo · all app content stays inside the device</p>
+      <button className="external-reset" onClick={resetDemo}>Reset demo</button>
     </main>
   );
 }
 
-function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset, availabilityOn, setAvailabilityOn, setShowAvailabilityEditor, setShowEventSheet, addPersonal, createEvent, mode, setMode }: { events: CalendarEvent[]; availability: Availability[]; days: ReturnType<typeof getWeekDays>; weekOffset: number; setWeekOffset: (week: number) => void; availabilityOn: boolean; setAvailabilityOn: (value: boolean) => void; setShowAvailabilityEditor: (value: boolean) => void; setShowEventSheet: (event: CalendarEvent) => void; addPersonal: () => void; createEvent: () => void; mode: "week" | "events"; setMode: (mode: "week" | "events") => void }) {
+function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset, availabilityOn, setAvailabilityOn, setShowAvailabilityEditor, setShowEventSheet, addPersonal, createEvent, mode, setMode, privatePlan, onCancelPrivate, onSlotSelected }: { events: CalendarEvent[]; availability: Availability[]; days: ReturnType<typeof getWeekDays>; weekOffset: number; setWeekOffset: (week: number) => void; availabilityOn: boolean; setAvailabilityOn: (value: boolean) => void; setShowAvailabilityEditor: (value: boolean) => void; setShowEventSheet: (event: CalendarEvent) => void; addPersonal: () => void; createEvent: () => void; mode: "week" | "events"; setMode: (mode: "week" | "events") => void; privatePlan: string[] | null; onCancelPrivate: () => void; onSlotSelected: (slot: Slot) => void }) {
   const dayWidth = 49;
+  const [now, setNow] = useState(() => new Date());
+  const [dragStart, setDragStart] = useState<{ day: number; time: number } | null>(null);
+  const [dragSelection, setDragSelection] = useState<Slot | null>(null);
   const visibleEvents = events.filter((event) => (event.week ?? 0) === weekOffset);
   const visibleAvailability = availability.filter((slot) => (slot.week ?? 0) === weekOffset);
-  const myEvents = events.filter((event) => event.kind === "personal" || event.id.startsWith("calendar-"));
+  const myEvents = events.filter((event) => ["personal", "private"].includes(event.kind) || event.id.startsWith("calendar-"));
+  const sharedSlots = privatePlan ? getSharedSlots(privatePlan, availability.filter((slot) => (slot.week ?? 0) === 0)) : [];
+  const today = dateToCalendarPosition(now.toISOString().slice(0, 10));
+  const nowTime = now.getHours() + now.getMinutes() / 60;
+  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60000); return () => window.clearInterval(timer); }, []);
+  function point(event: ReactPointerEvent<HTMLDivElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { day: Math.max(0, Math.min(6, Math.floor((event.clientX - rect.left) / dayWidth))), time: Math.max(0, Math.min(23.5, Math.round(((event.clientY - rect.top) / 58) * 2) / 2)) };
+  }
+  function startDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest("button")) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const start = point(event);
+    setDragStart(start);
+    setDragSelection({ day: start.day, start: start.time, end: Math.min(24, start.time + .5), week: weekOffset });
+  }
+  function moveDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!dragStart) return;
+    const current = point(event).time;
+    setDragSelection({ day: dragStart.day, start: Math.min(dragStart.time, current), end: Math.min(24, Math.max(dragStart.time, current) + .5), week: weekOffset });
+  }
+  function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!dragStart || !dragSelection) return;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    setDragStart(null);
+    setDragSelection(null);
+    onSlotSelected(dragSelection);
+  }
   return <section>
     <div className="segmented calendar-tabs"><button className={mode === "week" ? "active" : ""} onClick={() => setMode("week")}>Week</button><button className={mode === "events" ? "active" : ""} onClick={() => setMode("events")}>My Events</button></div>
     {mode === "events" ? <>
@@ -403,20 +517,23 @@ function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset,
     <div className="week-toolbar">
       <button className="date-pill" onClick={() => setWeekOffset(weekOffset - 1)} aria-label="Previous week">‹</button><div><strong>{formatWeekRange(days)}</strong><span>Week view · 24 hours</span></div><button className="date-pill" onClick={() => setWeekOffset(weekOffset + 1)} aria-label="Next week">›</button>
     </div>
-    <div className="availability-control">
+    {privatePlan ? <div className="private-planning"><div><strong>Choose a time for {privatePlan.map((id) => personById[id]?.name.split(" ")[0]).join(", ")}</strong><small>Everyone’s availability is overlaid below. Drag any open time or use a suggested match.</small></div><button className="text-button" onClick={onCancelPrivate}>Cancel</button>{sharedSlots.map((slot) => <button className="suggested-slot" key={`${slot.day}-${slot.start}`} onClick={() => onSlotSelected({ ...slot, week: 0 })}>{dayNames[slot.day]} {formatHour(slot.start)}–{formatHour(slot.end)}</button>)}</div> : <div className="availability-control">
       <div><span className="availability-key" /><strong>Availability</strong><small>Friends see free time only</small></div>
       <button className={`switch ${availabilityOn ? "on" : ""}`} onClick={() => setAvailabilityOn(!availabilityOn)} aria-label="Toggle availability"><i /></button>
-    </div>
-    <div className="calendar-actions"><div><button className="primary" onClick={createEvent}>＋ Create event</button><button className="secondary" onClick={addPersonal}>Personal</button><button className="secondary" onClick={() => setShowAvailabilityEditor(true)}>Availability</button></div><button className="ghost" onClick={() => setWeekOffset(0)}>Today</button></div>
+    </div>}
+    {!privatePlan && <div className="calendar-actions"><div><button className="primary" onClick={createEvent}>＋ Create event</button><button className="secondary" onClick={addPersonal}>Personal</button><button className="secondary" onClick={() => setShowAvailabilityEditor(true)}>Availability</button></div><button className="ghost" onClick={() => setWeekOffset(0)}>Today</button></div>}
     <div className="week-scroll">
       <div className="week-grid">
         <div className="day-head spacer" />{days.map((day) => <div className={`day-head ${weekOffset === 0 && day.index === 3 ? "today" : ""}`} key={day.full}><b>{day.name}</b><span>{day.date}</span></div>)}
         <div className="time-labels">{hours.map((hour) => <span key={hour} style={{ top: hour * 58 }}>{formatHour(hour)}</span>)}</div>
-        <div className="calendar-canvas">
+        <div className="calendar-canvas" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={() => { setDragStart(null); setDragSelection(null); }}>
           {hours.map((hour) => <i className="hour-line" key={hour} style={{ top: hour * 58 }} />)}
           {days.map((day) => <i className="day-line" key={day.full} style={{ left: `${day.index * dayWidth}px` }} />)}
-          {availabilityOn && visibleAvailability.map((slot) => <button aria-label={`Available ${days[slot.day].label}`} className="availability-block" key={slot.id} style={{ left: slot.day * dayWidth + 2, width: dayWidth - 4, top: slot.start * 58, height: (slot.end - slot.start) * 58 - 4 }} onClick={() => setShowAvailabilityEditor(true)}><span>Free</span></button>)}
-          {visibleEvents.map((event) => <button className={`calendar-event ${event.kind}`} key={event.id} style={{ left: event.day * dayWidth + 3, width: dayWidth - 6, top: event.start * 58 + 3, height: Math.max((event.end - event.start) * 58 - 7, 45) }} onClick={() => setShowEventSheet(event)}><strong>{event.name}</strong><small>{formatHour(event.start)}</small>{availabilityOn && visibleAvailability.some((slot) => slot.day === event.day && slot.start < event.end && slot.end > event.start) && <em>Free</em>}</button>)}
+          {availabilityOn && visibleAvailability.map((slot) => <button aria-label={`Available ${days[slot.day].label}`} className="availability-block" key={slot.id} style={{ left: slot.day * dayWidth + 2, width: dayWidth - 4, top: slot.start * 58, height: (slot.end - slot.start) * 58 - 4 }} onPointerDown={(event) => event.stopPropagation()} onClick={() => setShowAvailabilityEditor(true)}><span>Free</span></button>)}
+          {privatePlan && weekOffset === 0 && privatePlan.flatMap((id, personIndex) => (calendarSeed.peopleAvailability[id as keyof typeof calendarSeed.peopleAvailability] ?? []).map((slot, slotIndex) => <div className="friend-availability" key={`${id}-${slotIndex}`} style={{ left: slot.day * dayWidth + personIndex * 4 + 2, width: dayWidth - 5 - personIndex * 4, top: slot.start * 58, height: (slot.end - slot.start) * 58 - 3, zIndex: personIndex + 1 }}><span>{personById[id]?.initials}</span></div>))}
+          {today.week === weekOffset && <div className="current-time" style={{ left: today.day * dayWidth, width: dayWidth, top: nowTime * 58 }}><i /><span>Now</span></div>}
+          {dragSelection && <div className="drag-selection" style={{ left: dragSelection.day * dayWidth + 2, width: dayWidth - 4, top: dragSelection.start * 58, height: (dragSelection.end - dragSelection.start) * 58 }}><span>{formatHour(dragSelection.start)}–{formatHour(dragSelection.end)}</span></div>}
+          {visibleEvents.map((event) => <button className={`calendar-event ${event.kind}`} key={event.id} style={{ left: event.day * dayWidth + 3, width: dayWidth - 6, top: event.start * 58 + 3, height: Math.max((event.end - event.start) * 58 - 7, 45) }} onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()} onClick={() => setShowEventSheet(event)}><strong>{event.name}</strong><small>{formatHour(event.start)}</small>{availabilityOn && visibleAvailability.some((slot) => slot.day === event.day && slot.start < event.end && slot.end > event.start) && <em>Free</em>}</button>)}
         </div>
       </div>
     </div></>}
@@ -441,7 +558,7 @@ function DiscoverScreen({ events, activeFilters, filterLabel, removeFilter, open
   </section>;
 }
 
-function EventDetail({ event, joined, saved, friendIds, onJoin, onSave, onOpenPerson }: { event: PublicEvent; joined: boolean; saved: boolean; friendIds: string[]; onJoin: () => void; onSave: () => void; onOpenPerson: (id: string) => void }) {
+function EventDetail({ event, joined, saved, friendIds, onJoin, onSave, onOpenPerson, onEdit }: { event: PublicEvent; joined: boolean; saved: boolean; friendIds: string[]; onJoin: () => void; onSave: () => void; onOpenPerson: (id: string) => void; onEdit?: () => void }) {
   const organizer = personById[event.organizerId];
   return <article className="event-detail">
     <div className="event-title-row"><div><span className={event.fitsAvailability ? "fit" : "conflict"}>{event.fitsAvailability ? "✓ Fits your availability" : "! Schedule conflict"}</span><h2>{event.name}</h2></div><button className="save-button detail-save" onClick={onSave}>{saved ? "♥" : "♡"}</button></div>
@@ -451,24 +568,31 @@ function EventDetail({ event, joined, saved, friendIds, onJoin, onSave, onOpenPe
     <section className="detail-section"><h3>About</h3><p>{event.description}</p><div className="tag-row">{event.interests.map((interest) => <span key={interest}>{interest}</span>)}</div></section>
     <section className="detail-section"><h3>Organizer</h3><button className="person-row person-link" onClick={() => onOpenPerson(organizer.id)}><Avatar id={organizer.id} /><span><b>{organizer.name} {organizer.verified && <em className="verified">✓</em>}</b><small>{organizer.role}</small></span><i>View ›</i></button></section>
     <section className="detail-section"><div className="section-heading compact"><div><h3>People going</h3><p>{event.participantIds.length + (joined && !event.participantIds.includes("erin") ? 1 : 0)} students · friends and community</p></div></div><div className="people-preview">{event.participantIds.map((id) => <button key={id} onClick={() => onOpenPerson(id)} aria-label={`View ${personById[id]?.name}`}><Avatar id={id} /><small>{personById[id]?.name.split(" ")[0]}</small><em>{id === "erin" ? "You" : friendIds.includes(id) ? "Friend" : "Student"}</em></button>)}</div></section>
+    {onEdit && <button className="secondary wide edit-public" onClick={onEdit}>Edit this event</button>}
     <button className={`sticky-join ${joined ? "joined" : ""}`} onClick={onJoin}>{joined ? "✓ Joined · Leave event" : "Join event"}</button>
   </article>;
 }
 
-function CreateScreen({ kind, setKind, onSubmit, days }: { kind: "personal" | "public"; setKind: (kind: "personal" | "public") => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; days: ReturnType<typeof getWeekDays> }) {
+function CreateScreen({ kind, setKind, onSubmit, inviteIds, toggleInvite, friends, continuePrivate }: { kind: "private" | "public"; setKind: (kind: "private" | "public") => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; inviteIds: string[]; toggleInvite: (id: string) => void; friends: Person[]; continuePrivate: () => void }) {
   return <section className="create-screen">
-    <div className="segmented"><button className={kind === "personal" ? "active" : ""} onClick={() => setKind("personal")}>Personal</button><button className={kind === "public" ? "active" : ""} onClick={() => setKind("public")}>Public</button></div>
-    <div className="create-intro"><span>{kind === "personal" ? "◷" : "◎"}</span><div><h2>{kind === "personal" ? "Add to my calendar" : "Share with everyone"}</h2><p>{kind === "personal" ? "Private unless you invite someone." : "Public, in person, and open to all users."}</p></div></div>
-    <form className="stack-form" onSubmit={onSubmit}>
-      <label>Event name<input name="name" required placeholder={kind === "personal" ? "Dinner with Maya" : "Campus sketch walk"} /></label>
-      {kind === "public" && <><label>Short summary<input name="summary" required placeholder="One sentence that explains the plan" /></label><label>Description<textarea name="description" required rows={3} placeholder="What should people know or bring?" /></label></>}
-      {kind === "personal" ? <label>Day<select name="day" defaultValue="4">{days.map((day) => <option value={day.index} key={day.full}>{day.label}</option>)}</select></label> : <label>Date<input name="date" type="date" required defaultValue="2026-08-14" /></label>}
-      <div className="form-row"><label>Starts<input name="start" type="time" defaultValue="18:00" required /></label><label>Ends<input name="end" type="time" defaultValue="19:30" required /></label></div>
-      <label>In-person location<input name="location" required placeholder="Building, room, or meeting point" /></label>
-      {kind === "public" && <><label>Interest<select name="interest">{filterData.interests.map((interest) => <option key={interest}>{interest}</option>)}</select></label><label className="check"><input name="recurring" type="checkbox" /> Make this event recurring</label><label>Recurrence<select name="recurrence"><option>Every week</option><option>Every other week</option><option>Every month</option></select></label></>}
-      <button className="primary wide">{kind === "personal" ? "Save personal event" : "Publish to everyone"}</button>
-    </form>
+    <div className="segmented"><button className={kind === "private" ? "active" : ""} onClick={() => setKind("private")}>Private</button><button className={kind === "public" ? "active" : ""} onClick={() => setKind("public")}>Public</button></div>
+    <div className="create-intro"><span>{kind === "private" ? "◷" : "◎"}</span><div><h2>{kind === "private" ? "Plan with friends" : "Share with everyone"}</h2><p>{kind === "private" ? "Choose people first, then compare free time." : "Public, in person, and open to all users."}</p></div></div>
+    {kind === "private" ? <div className="invite-step"><p className="eyebrow">1 · CHOOSE WHO TO INVITE</p><div className="invite-list">{friends.map((person) => <button key={person.id} className={inviteIds.includes(person.id) ? "selected" : ""} onClick={() => toggleInvite(person.id)}><Avatar id={person.id} /><span><b>{person.name}</b><small>{person.role}</small></span><i>{inviteIds.includes(person.id) ? "✓" : "+"}</i></button>)}</div><button className="primary wide" onClick={continuePrivate}>Compare availability</button></div> : <form className="stack-form" onSubmit={onSubmit}><PublicEventFields /><button className="primary wide">Publish to everyone</button></form>}
   </section>;
+}
+
+function PublicEventFields({ event }: { event?: PublicEvent }) {
+  return <><label>Event name<input name="name" required defaultValue={event?.name} placeholder="Campus sketch walk" /></label><label>Display summary<input name="summary" required defaultValue={event?.summary} placeholder="One sentence shown in event listings" /></label><label>Description<textarea name="description" required rows={3} defaultValue={event?.description} placeholder="What should people know or bring?" /></label><label>Date<input name="date" type="date" required defaultValue={event ? eventDateToInput(event) : "2026-08-14"} /></label><div className="form-row"><label>Starts<input name="start" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.startLabel)) : "18:00"} required /></label><label>Ends<input name="end" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.endLabel)) : "19:30"} required /></label></div><label>In-person location<input name="location" required defaultValue={event?.location} placeholder="Building, room, or meeting point" /></label><fieldset className="interest-editor"><legend>Interests · choose any</legend>{filterData.interests.map((interest) => <label className="interest-check" key={interest}><input type="checkbox" name="interests" value={interest} defaultChecked={event?.interests.includes(interest)} />{interest}</label>)}</fieldset><label className="check"><input name="recurring" type="checkbox" defaultChecked={Boolean(event?.recurrence)} /> Make this event recurring</label><label>Recurrence<select name="recurrence" defaultValue={event?.recurrence ?? "Every week"}><option>Every week</option><option>Every other week</option><option>Every month</option></select></label></>;
+}
+
+function CalendarEventForm({ editor, days, onSubmit }: { editor: EventEditor; days: ReturnType<typeof getWeekDays>; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  const source = editor.event;
+  const slot = editor.slot;
+  return <form className="stack-form" onSubmit={onSubmit}>{editor.kind === "private" && <div className="invite-summary"><AvatarStack ids={editor.inviteeIds ?? []} /><span>{(editor.inviteeIds ?? []).map((id) => personById[id]?.name.split(" ")[0]).join(", ")} invited</span></div>}<label>Event name<input name="name" defaultValue={source?.name} required placeholder={editor.kind === "private" ? "Dinner together" : "Gym session"} /></label><label>Day<select name="day" defaultValue={slot?.day ?? source?.day ?? 4}>{days.map((day) => <option value={day.index} key={day.full}>{day.label}</option>)}</select></label><div className="form-row"><label>Starts<input name="start" type="time" defaultValue={numberToTime(slot?.start ?? source?.start ?? 18)} required /></label><label>Ends<input name="end" type="time" defaultValue={numberToTime(slot?.end ?? source?.end ?? 19)} required /></label></div><label>In-person location<input name="location" defaultValue={source?.location} required placeholder="Building, room, or meeting point" /></label><label className="check"><input name="recurring" type="checkbox" defaultChecked={Boolean(source?.recurrence)} /> Make this event recurring</label><label>Recurrence<select name="recurrence" defaultValue={source?.recurrence ?? "Every week"}><option>Every week</option><option>Every other week</option><option>Every month</option></select></label><button className="primary wide">{source ? "Save changes" : editor.kind === "private" ? "Create and send invites" : "Save personal event"}</button></form>;
+}
+
+function PublicEventForm({ event, onSubmit }: { event: PublicEvent; onSubmit: (form: FormEvent<HTMLFormElement>) => void }) {
+  return <form className="stack-form" onSubmit={onSubmit}><PublicEventFields event={event} /><button className="primary wide">Save changes</button></form>;
 }
 
 function PeopleScreen({ friendIds, onCreate, onOpenPerson, onRemove }: { friendIds: string[]; onCreate: () => void; onOpenPerson: (id: string) => void; onRemove: (id: string) => void }) {
@@ -482,12 +606,12 @@ function PeopleScreen({ friendIds, onCreate, onOpenPerson, onRemove }: { friendI
   </section>;
 }
 
-function NotificationsScreen({ items, markAll }: { items: typeof notificationSeed; markAll: () => void }) {
-  return <section><div className="section-heading"><div><h2>Recent</h2><p>Plans, changes, and shared time</p></div><button className="text-button" onClick={markAll}>Mark all read</button></div><div className="notification-list">{items.map((item) => <article key={item.id} className={item.unread ? "unread" : ""}><span className="notification-icon">{item.icon}</span><div><h3>{item.title}</h3><p>{item.body}</p><small>{item.time}</small></div>{item.unread && <i />}</article>)}</div></section>;
+function NotificationsScreen({ items, markAll, open, remove }: { items: typeof notificationSeed; markAll: () => void; open: (item: (typeof notificationSeed)[number]) => void; remove: (id: string) => void }) {
+  return <section><div className="section-heading"><div><h2>Recent</h2><p>Plans, changes, and shared time</p></div><button className="text-button" onClick={markAll}>Mark all read</button></div><div className="notification-list">{items.map((item) => <article key={item.id} className={item.unread ? "unread" : ""}><button className="notification-main" onClick={() => open(item)}><span className="notification-icon">{item.icon}</span><div><h3>{item.title}</h3><p>{item.body}</p><small>{item.time}</small></div>{item.unread && <i />}</button><button className="delete-notification" onClick={() => remove(item.id)} aria-label={`Delete ${item.title}`}>×</button></article>)}</div>{!items.length && <div className="empty-state"><h3>All clear</h3><p>You have no notifications.</p></div>}</section>;
 }
 
-function ProfileScreen({ activeFilters, resetDemo, profile, settings, edit, openSettings }: { activeFilters: string[]; resetDemo: () => void; profile: Profile; settings: ProfileSettings; edit: () => void; openSettings: (panel: SettingsPanel | "filters") => void }) {
-  return <section className="profile-screen"><div className="profile-card"><span className="avatar profile-avatar" style={{ background: personById.erin.color }}>{initials(profile.name)}</span><h2>{profile.name}</h2><p>she/her · Interaction Design, Year 2</p>{profile.bio && <p className="profile-bio">{profile.bio}</p>}<button className="secondary edit-profile" onClick={edit}>Edit profile</button><div className="tag-row">{profile.interests.map((interest) => <span key={interest}>{interest}</span>)}</div></div><div className="settings-list"><button onClick={() => openSettings("calendar")}><span>▦</span><div><b>Connected calendars</b><small>{settings.calendarConnected ? "University calendar · Synced" : "Not connected"}</small></div><i>›</i></button><button onClick={() => openSettings("availability")}><span>◒</span><div><b>Availability privacy</b><small>{settings.availabilityPrivacy === "connections" ? "Visible to connections" : "Only visible to you"}</small></div><i>›</i></button><button onClick={() => openSettings("filters")}><span>⌕</span><div><b>Discover filters</b><small>{activeFilters.length ? `${activeFilters.length} active` : "No filters"}</small></div><i>›</i></button><button onClick={() => openSettings("notifications")}><span>♢</span><div><b>Notifications</b><small>{settings.eventNotifications || settings.friendNotifications ? "Configured" : "Off"}</small></div><i>›</i></button><button onClick={() => openSettings("privacy")}><span>?</span><div><b>Privacy & safety</b><small>{settings.hideAttendees ? "Attendee list hidden" : "Standard protections"}</small></div><i>›</i></button></div><button className="reset-button" onClick={resetDemo}>Reset demo</button></section>;
+function ProfileScreen({ activeFilters, profile, settings, edit, openSettings }: { activeFilters: string[]; profile: Profile; settings: ProfileSettings; edit: () => void; openSettings: (panel: SettingsPanel | "filters") => void }) {
+  return <section className="profile-screen"><div className="profile-card"><span className="avatar profile-avatar" style={{ background: personById.erin.color }}>{initials(profile.name)}</span><h2>{profile.name}</h2><p>she/her · Interaction Design, Year 2</p>{profile.bio && <p className="profile-bio">{profile.bio}</p>}<button className="secondary edit-profile" onClick={edit}>Edit profile</button><div className="tag-row">{profile.interests.map((interest) => <span key={interest}>{interest}</span>)}</div></div><div className="settings-list"><button onClick={() => openSettings("calendar")}><span>▦</span><div><b>Connected calendars</b><small>{settings.calendarConnected ? "University calendar · Synced" : "Not connected"}</small></div><i>›</i></button><button onClick={() => openSettings("availability")}><span>◒</span><div><b>Availability privacy</b><small>{settings.availabilityPrivacy === "connections" ? "Visible to connections" : "Only visible to you"}</small></div><i>›</i></button><button onClick={() => openSettings("filters")}><span>⌕</span><div><b>Discover filters</b><small>{activeFilters.length ? `${activeFilters.length} active` : "No filters"}</small></div><i>›</i></button><button onClick={() => openSettings("notifications")}><span>♢</span><div><b>Notifications</b><small>{settings.eventNotifications || settings.friendNotifications ? "Configured" : "Off"}</small></div><i>›</i></button><button onClick={() => openSettings("privacy")}><span>?</span><div><b>Privacy & safety</b><small>{settings.hideAttendees ? "Attendee list hidden" : "Standard protections"}</small></div><i>›</i></button></div></section>;
 }
 
 function PersonProfile({ person, isFriend, onAddFriend, onRemoveFriend }: { person: Person; isFriend: boolean; onAddFriend: () => void; onRemoveFriend: () => void }) {
@@ -589,6 +713,29 @@ function publicEventCalendarPosition(event: PublicEvent) {
 
 function formatInputDate(value: string) {
   return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+function numberToTime(value: number) {
+  const hour = Math.floor(value).toString().padStart(2, "0");
+  const minute = Math.round((value % 1) * 60).toString().padStart(2, "0");
+  return `${hour}:${minute}`;
+}
+
+function eventDateToInput(event: PublicEvent) {
+  const match = event.date.match(/([A-Za-z]{3})\s+(\d{1,2})/);
+  if (!match) return "2026-08-14";
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(match[1]) + 1;
+  return `2026-${String(month).padStart(2, "0")}-${match[2].padStart(2, "0")}`;
+}
+
+function getSharedSlots(ids: string[], ownAvailability: Availability[]) {
+  const peopleAvailability = calendarSeed.peopleAvailability as Record<string, { day: number; start: number; end: number }[]>;
+  const sources = [ownAvailability, ...ids.map((id) => peopleAvailability[id] ?? [])];
+  return dayNames.flatMap((_, day) => {
+    let matches = sources[0].filter((slot) => slot.day === day).map(({ start, end }) => ({ day, start, end }));
+    for (const source of sources.slice(1)) matches = matches.flatMap((match) => source.filter((slot) => slot.day === day).map((slot) => ({ day, start: Math.max(match.start, slot.start), end: Math.min(match.end, slot.end) })).filter((slot) => slot.end - slot.start >= .5));
+    return matches;
+  }).slice(0, 3);
 }
 
 function initials(name: string) {

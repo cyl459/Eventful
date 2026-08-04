@@ -25,7 +25,7 @@ test("server-renders the complete seven-day calendar", async () => {
   }
   assert.match(html, />My Events</);
   assert.match(html, />＋ Create event</);
-  assert.doesNotMatch(html, /<small>Publish<\/small>/);
+  assert.match(html, /<small>Create<\/small>/);
 });
 
 test("includes interactive filters, friends, interests, and profile settings", async () => {
@@ -37,4 +37,12 @@ test("includes interactive filters, friends, interests, and profile settings", a
   assert.match(page, /Remove friend/);
   assert.match(page, /interest-editor/);
   assert.match(page, /SettingsModal/);
+  assert.match(page, /Compare availability/);
+  assert.match(page, /drag-selection/);
+  assert.match(page, /current-time/);
+  assert.match(page, /Display summary/);
+  assert.match(page, /name="interests"/);
+  assert.match(page, /Remove .*\?/);
+  assert.match(page, /delete-notification/);
+  assert.match(page, /Edit event/);
 });
