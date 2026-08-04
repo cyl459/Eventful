@@ -1,0 +1,5 @@
+[
+  { "id": "design-society", "name": "Design Society", "description": "Critiques, workshops, and portfolio support.", "memberIds": ["erin", "alejandra", "maya"], "joined": true },
+  { "id": "campus-runners", "name": "Campus Runners", "description": "Friendly runs and weekend wellness plans.", "memberIds": ["nora", "mark", "ryn"], "joined": false },
+  { "id": "film-circle", "name": "Film Circle", "description": "Screenings, discussions, and rooftop movie nights.", "memberIds": ["maya", "ryn", "alejandra"], "joined": true }
+]

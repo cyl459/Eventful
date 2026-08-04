@@ -45,4 +45,12 @@ test("includes interactive filters, friends, interests, and profile settings", a
   assert.match(page, /Remove .*\?/);
   assert.match(page, /delete-notification/);
   assert.match(page, /Edit event/);
+  assert.match(page, /SearchableInterestPicker/);
+  assert.match(page, /Create community/);
+  assert.match(page, /toggleCommunity/);
+  assert.match(page, /invitedCommunityIds/);
+  assert.match(page, /Community invitations sent/);
+  assert.match(page, /selectedPerson \? setSelectedPerson\(null\)/);
+  assert.match(page, /pointerEvents: privatePlan \? "none"/);
+  assert.match(page, /`calendar-\$\{event\.id\}` === showEventSheet\.id/);
 });

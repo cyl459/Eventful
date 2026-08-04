@@ -6,10 +6,11 @@ import people from "./data/people.json";
 import filterData from "./data/filters.json";
 import calendarSeed from "./data/calendar.json";
 import notificationSeed from "./data/notifications.json";
+import communitySeed from "./data/communities.json";
 import { mergeAvailability } from "./calendar-utils.mjs";
 
 type Screen = "calendar" | "discover" | "create" | "people" | "profile" | "notifications";
-type PublicEvent = Omit<(typeof eventsSeed)[number], "recurrence"> & { recurrence: string | null };
+type PublicEvent = Omit<(typeof eventsSeed)[number], "recurrence"> & { recurrence: string | null; invitedCommunityIds?: string[] };
 type CalendarEvent = { id: string; name: string; day: number; start: number; end: number; kind: "class" | "personal" | "private" | "public"; location: string; week?: number; recurrence?: string | null; inviteeIds?: string[] };
 type Availability = { id: string; day: number; start: number; end: number; week?: number };
 type Slot = { day: number; start: number; end: number; week: number };
@@ -18,6 +19,7 @@ type Person = (typeof people)[number];
 type Profile = { name: string; bio: string; interests: string[] };
 type ProfileSettings = { calendarConnected: boolean; availabilityPrivacy: "connections" | "private"; eventNotifications: boolean; friendNotifications: boolean; hideAttendees: boolean };
 type SettingsPanel = "calendar" | "availability" | "notifications" | "privacy" | null;
+type Community = { id: string; name: string; description: string; memberIds: string[]; joined: boolean };
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const hours = Array.from({ length: 24 }, (_, index) => index);
@@ -70,6 +72,8 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [toast, setToast] = useState("");
   const [notifications, setNotifications] = useState(notificationSeed);
+  const [communities, setCommunities] = useState<Community[]>(communitySeed);
+  const [showCommunityCreator, setShowCommunityCreator] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("scheduler-demo");
@@ -88,6 +92,7 @@ export default function Home() {
         setProfile({ name: state.profile?.name ?? "Erin Chen", bio: state.profile?.bio ?? "", interests: state.profile?.interests ?? [...personById.erin.interests] });
         setProfileSettings(state.profileSettings ?? { calendarConnected: true, availabilityPrivacy: "connections", eventNotifications: true, friendNotifications: true, hideAttendees: false });
         setNotifications(state.notifications ?? notificationSeed);
+        setCommunities(state.communities ?? communitySeed);
       } catch {
         localStorage.removeItem("scheduler-demo");
       }
@@ -97,8 +102,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem("scheduler-demo", JSON.stringify({ joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings, notifications }));
-  }, [hydrated, joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings, notifications]);
+    localStorage.setItem("scheduler-demo", JSON.stringify({ joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings, notifications, communities }));
+  }, [hydrated, joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings, notifications, communities]);
 
   useEffect(() => {
     if (!toast) return;
@@ -116,7 +121,6 @@ export default function Home() {
   function openPerson(id: string) {
     const person = personById[id];
     if (!person) return;
-    setSelectedEvent(null);
     setSelectedPerson(person);
   }
 
@@ -149,6 +153,7 @@ export default function Home() {
     setProfile({ name: "Erin Chen", bio: "", interests: [...personById.erin.interests] });
     setProfileSettings({ calendarConnected: true, availabilityPrivacy: "connections", eventNotifications: true, friendNotifications: true, hideAttendees: false });
     setNotifications(notificationSeed);
+    setCommunities(communitySeed);
     setPrivatePlan(null);
     setEventEditor(null);
     setWeekOffset(0);
@@ -231,6 +236,7 @@ export default function Home() {
     const date = String(data.get("date"));
     const calendarPosition = dateToCalendarPosition(date);
     const selectedInterests = data.getAll("interests").map(String);
+    const invitedCommunityIds = data.getAll("communities").map(String);
     const created: PublicEvent = {
         id: `event-${Date.now()}`,
         name,
@@ -248,6 +254,7 @@ export default function Home() {
         conflict: null,
         recurrence: data.get("recurring") ? String(data.get("recurrence")) : null,
         status: "published",
+        invitedCommunityIds,
     };
     setEvents((current) => [created, ...current]);
     setCalendarEvents((current) => [...current, {
@@ -262,6 +269,10 @@ export default function Home() {
         recurrence: created.recurrence,
     }]);
     setToast("Public event published to everyone");
+    if (invitedCommunityIds.length) {
+      const memberCount = new Set(communities.filter((community) => invitedCommunityIds.includes(community.id)).flatMap((community) => community.memberIds)).size;
+      setNotifications((current) => [{ id: `community-${Date.now()}`, icon: "◎", title: "Community invitations sent", body: `${memberCount} community members were notified about ${created.name}.`, time: "Now", unread: true }, ...current]);
+    }
     setSelectedEvent(created);
     setScreen("discover");
   }
@@ -304,7 +315,7 @@ export default function Home() {
     const end = timeToNumber(String(data.get("end")));
     if (end <= start) return setToast("End time must be after start time");
     const interests = data.getAll("interests").map(String);
-    const updated = { ...editingPublic, name: String(data.get("name")), summary: String(data.get("summary")), description: String(data.get("description")), date: formatInputDate(date), startLabel: formatHour(start), endLabel: formatHour(end), location: String(data.get("location")), interests: interests.length ? interests : editingPublic.interests, recurrence: data.get("recurring") ? String(data.get("recurrence")) : null };
+    const updated = { ...editingPublic, name: String(data.get("name")), summary: String(data.get("summary")), description: String(data.get("description")), date: formatInputDate(date), startLabel: formatHour(start), endLabel: formatHour(end), location: String(data.get("location")), interests: interests.length ? interests : editingPublic.interests, invitedCommunityIds: data.getAll("communities").map(String), recurrence: data.get("recurring") ? String(data.get("recurrence")) : null };
     const position = dateToCalendarPosition(date);
     setEvents((current) => current.map((item) => item.id === updated.id ? updated : item));
     setCalendarEvents((current) => current.map((item) => item.id === `calendar-${updated.id}` ? { ...item, name: updated.name, day: position.day, week: position.week, start, end, location: updated.location, recurrence: updated.recurrence } : item));
@@ -333,6 +344,20 @@ export default function Home() {
     setConfirmRemove(null);
   }
 
+  function createCommunity(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const memberIds = data.getAll("members").map(String);
+    const community: Community = { id: `community-${Date.now()}`, name: String(data.get("name")).trim(), description: String(data.get("description")).trim(), memberIds: ["erin", ...memberIds], joined: true };
+    setCommunities((current) => [community, ...current]);
+    setShowCommunityCreator(false);
+    setToast(`${community.name} created`);
+  }
+
+  function toggleCommunity(id: string) {
+    setCommunities((current) => current.map((community) => community.id === id ? { ...community, joined: !community.joined, memberIds: community.joined ? community.memberIds.filter((memberId) => memberId !== "erin") : [...new Set([...community.memberIds, "erin"])] } : community));
+  }
+
   const currentDays = getWeekDays(weekOffset);
   const title = selectedPerson ? selectedPerson.name : selectedEvent ? "Event" : ({
     calendar: "My week",
@@ -352,7 +377,7 @@ export default function Home() {
           <div className="app-content">
             <header className="app-header">
               <div>
-                {(selectedEvent || selectedPerson) && <button className="icon-button back" onClick={() => { setSelectedEvent(null); setSelectedPerson(null); }} aria-label="Back">‹</button>}
+                {(selectedEvent || selectedPerson) && <button className="icon-button back" onClick={() => selectedPerson ? setSelectedPerson(null) : setSelectedEvent(null)} aria-label="Back">‹</button>}
                 <p className="eyebrow">SCHEDULER THING</p>
                 <h1>{title}</h1>
               </div>
@@ -396,10 +421,10 @@ export default function Home() {
                 />
               )}
               {selectedEvent && !selectedPerson && (
-                <EventDetail event={selectedEvent} joined={joined.includes(selectedEvent.id)} saved={saved.includes(selectedEvent.id)} friendIds={friendIds} onJoin={() => joinEvent(selectedEvent)} onSave={() => setSaved((current) => current.includes(selectedEvent.id) ? current.filter((id) => id !== selectedEvent.id) : [...current, selectedEvent.id])} onOpenPerson={openPerson} onEdit={selectedEvent.organizerId === "erin" ? () => setEditingPublic(selectedEvent) : undefined} />
+                <EventDetail event={selectedEvent} joined={joined.includes(selectedEvent.id)} saved={saved.includes(selectedEvent.id)} friendIds={friendIds} communities={communities} onJoin={() => joinEvent(selectedEvent)} onSave={() => setSaved((current) => current.includes(selectedEvent.id) ? current.filter((id) => id !== selectedEvent.id) : [...current, selectedEvent.id])} onOpenPerson={openPerson} onEdit={selectedEvent.organizerId === "erin" ? () => setEditingPublic(selectedEvent) : undefined} />
               )}
-              {screen === "create" && !selectedEvent && !selectedPerson && <CreateScreen kind={createKind} setKind={setCreateKind} onSubmit={createEvent} inviteIds={privateInviteIds} toggleInvite={(id) => setPrivateInviteIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} friends={people.filter((person) => friendIds.includes(person.id))} continuePrivate={choosePrivateTime} />}
-              {screen === "people" && !selectedEvent && !selectedPerson && <PeopleScreen friendIds={friendIds} onCreate={() => setEventEditor({ kind: "personal" })} onOpenPerson={openPerson} onRemove={(id) => setConfirmRemove(personById[id])} />}
+              {screen === "create" && !selectedEvent && !selectedPerson && <CreateScreen kind={createKind} setKind={setCreateKind} onSubmit={createEvent} inviteIds={privateInviteIds} toggleInvite={(id) => setPrivateInviteIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} friends={people.filter((person) => friendIds.includes(person.id))} communities={communities} continuePrivate={choosePrivateTime} />}
+              {screen === "people" && !selectedEvent && !selectedPerson && <PeopleScreen friendIds={friendIds} communities={communities} onCreate={() => setEventEditor({ kind: "personal" })} onOpenPerson={openPerson} onRemove={(id) => setConfirmRemove(personById[id])} createCommunity={() => setShowCommunityCreator(true)} toggleCommunity={toggleCommunity} />}
               {screen === "notifications" && !selectedEvent && !selectedPerson && <NotificationsScreen items={notifications} markAll={() => setNotifications((current) => current.map((item) => ({ ...item, unread: false })))} open={(item) => { setNotifications((current) => current.map((notification) => notification.id === item.id ? { ...notification, unread: false } : notification)); setSelectedNotification(item); }} remove={(id) => setNotifications((current) => current.filter((item) => item.id !== id))} />}
               {screen === "profile" && !selectedEvent && !selectedPerson && <ProfileScreen activeFilters={displayFilters} profile={profile} settings={profileSettings} edit={() => { setEditInterests(profile.interests); setShowProfileEditor(true); }} openSettings={(panel) => panel === "filters" ? setShowFilters(true) : setSettingsPanel(panel)} />}
             </div>
@@ -433,7 +458,7 @@ export default function Home() {
 
           {showEventSheet && <Modal title={showEventSheet.name} onClose={() => setShowEventSheet(null)}>
             <div className="detail-facts"><p><span>Time</span>{getWeekDays(showEventSheet.week ?? 0)[showEventSheet.day].label} · {formatHour(showEventSheet.start)}–{formatHour(showEventSheet.end)}</p><p><span>Location</span>{showEventSheet.location}</p><p><span>Calendar</span>{showEventSheet.kind === "class" ? "Imported classes" : showEventSheet.kind === "public" ? "Hosted public event" : showEventSheet.kind === "private" ? `Private · ${showEventSheet.inviteeIds?.length ?? 0} invited` : "Personal"}</p>{showEventSheet.recurrence && <p><span>Repeats</span>{showEventSheet.recurrence}</p>}</div>
-            {showEventSheet.kind !== "class" && !showEventSheet.id.startsWith("joined-") && <button className="secondary wide" onClick={() => { setEventEditor({ kind: showEventSheet.kind === "private" ? "private" : "personal", event: showEventSheet, inviteeIds: showEventSheet.inviteeIds }); setShowEventSheet(null); }}>Edit event</button>}
+            {showEventSheet.kind !== "class" && !showEventSheet.id.startsWith("joined-") && <button className="secondary wide" onClick={() => { if (showEventSheet.kind === "public") { const publicEvent = events.find((event) => `calendar-${event.id}` === showEventSheet.id); if (publicEvent) setEditingPublic(publicEvent); } else setEventEditor({ kind: showEventSheet.kind === "private" ? "private" : "personal", event: showEventSheet, inviteeIds: showEventSheet.inviteeIds }); setShowEventSheet(null); }}>Edit event</button>}
             <button className="primary wide" onClick={() => setShowEventSheet(null)}>Done</button>
           </Modal>}
 
@@ -441,7 +466,9 @@ export default function Home() {
 
           {eventEditor && <Modal title={eventEditor.event ? "Edit event" : eventEditor.kind === "private" ? "Finish private event" : "Create personal event"} onClose={() => { setEventEditor(null); if (eventEditor.kind === "private") setPrivatePlan(null); }}><CalendarEventForm editor={eventEditor} days={currentDays} onSubmit={saveCalendarEvent} /></Modal>}
 
-          {editingPublic && <Modal title="Edit public event" onClose={() => setEditingPublic(null)}><PublicEventForm event={editingPublic} onSubmit={savePublicEdit} /></Modal>}
+          {editingPublic && <Modal title="Edit public event" onClose={() => setEditingPublic(null)}><PublicEventForm event={editingPublic} communities={communities} onSubmit={savePublicEdit} /></Modal>}
+
+          {showCommunityCreator && <Modal title="Create community" onClose={() => setShowCommunityCreator(false)}><form className="stack-form" onSubmit={createCommunity}><label>Community name<input name="name" required placeholder="Weekend Creators" /></label><label>Description<textarea name="description" required rows={3} placeholder="What brings this group together?" /></label><fieldset className="interest-editor"><legend>Add people</legend>{people.filter((person) => person.id !== "erin").map((person) => <label className="interest-check" key={person.id}><input type="checkbox" name="members" value={person.id} />{person.name}</label>)}</fieldset><button className="primary wide">Create community</button></form></Modal>}
 
           {confirmRemove && <Modal title={`Remove ${confirmRemove.name}?`} onClose={() => setConfirmRemove(null)}><p>They will be removed from your People list. You can add them again from a public event.</p><button className="danger wide" onClick={removeConfirmedFriend}>Remove friend</button><button className="text-button wide" onClick={() => setConfirmRemove(null)}>Cancel</button></Modal>}
 
@@ -529,7 +556,7 @@ function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset,
         <div className="calendar-canvas" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={() => { setDragStart(null); setDragSelection(null); }}>
           {hours.map((hour) => <i className="hour-line" key={hour} style={{ top: hour * 58 }} />)}
           {days.map((day) => <i className="day-line" key={day.full} style={{ left: `${day.index * dayWidth}px` }} />)}
-          {availabilityOn && visibleAvailability.map((slot) => <button aria-label={`Available ${days[slot.day].label}`} className="availability-block" key={slot.id} style={{ left: slot.day * dayWidth + 2, width: dayWidth - 4, top: slot.start * 58, height: (slot.end - slot.start) * 58 - 4 }} onPointerDown={(event) => event.stopPropagation()} onClick={() => setShowAvailabilityEditor(true)}><span>Free</span></button>)}
+          {availabilityOn && visibleAvailability.map((slot) => <button aria-label={`Available ${days[slot.day].label}`} className="availability-block" key={slot.id} style={{ left: slot.day * dayWidth + 2, width: dayWidth - 4, top: slot.start * 58, height: (slot.end - slot.start) * 58 - 4, pointerEvents: privatePlan ? "none" : "auto" }} onPointerDown={(event) => event.stopPropagation()} onClick={() => setShowAvailabilityEditor(true)}><span>Free</span></button>)}
           {privatePlan && weekOffset === 0 && privatePlan.flatMap((id, personIndex) => (calendarSeed.peopleAvailability[id as keyof typeof calendarSeed.peopleAvailability] ?? []).map((slot, slotIndex) => <div className="friend-availability" key={`${id}-${slotIndex}`} style={{ left: slot.day * dayWidth + personIndex * 4 + 2, width: dayWidth - 5 - personIndex * 4, top: slot.start * 58, height: (slot.end - slot.start) * 58 - 3, zIndex: personIndex + 1 }}><span>{personById[id]?.initials}</span></div>))}
           {today.week === weekOffset && <div className="current-time" style={{ left: today.day * dayWidth, width: dayWidth, top: nowTime * 58 }}><i /><span>Now</span></div>}
           {dragSelection && <div className="drag-selection" style={{ left: dragSelection.day * dayWidth + 2, width: dayWidth - 4, top: dragSelection.start * 58, height: (dragSelection.end - dragSelection.start) * 58 }}><span>{formatHour(dragSelection.start)}–{formatHour(dragSelection.end)}</span></div>}
@@ -558,7 +585,7 @@ function DiscoverScreen({ events, activeFilters, filterLabel, removeFilter, open
   </section>;
 }
 
-function EventDetail({ event, joined, saved, friendIds, onJoin, onSave, onOpenPerson, onEdit }: { event: PublicEvent; joined: boolean; saved: boolean; friendIds: string[]; onJoin: () => void; onSave: () => void; onOpenPerson: (id: string) => void; onEdit?: () => void }) {
+function EventDetail({ event, joined, saved, friendIds, communities, onJoin, onSave, onOpenPerson, onEdit }: { event: PublicEvent; joined: boolean; saved: boolean; friendIds: string[]; communities: Community[]; onJoin: () => void; onSave: () => void; onOpenPerson: (id: string) => void; onEdit?: () => void }) {
   const organizer = personById[event.organizerId];
   return <article className="event-detail">
     <div className="event-title-row"><div><span className={event.fitsAvailability ? "fit" : "conflict"}>{event.fitsAvailability ? "✓ Fits your availability" : "! Schedule conflict"}</span><h2>{event.name}</h2></div><button className="save-button detail-save" onClick={onSave}>{saved ? "♥" : "♡"}</button></div>
@@ -566,6 +593,7 @@ function EventDetail({ event, joined, saved, friendIds, onJoin, onSave, onOpenPe
     <div className="fact-card"><p><i>◷</i><span><b>{event.date}</b>{event.startLabel}–{event.endLabel}{event.recurrence && <small>↻ {event.recurrence}</small>}</span></p><p><i>⌖</i><span><b>{event.location}</b>{event.distanceKm} km away · In person</span></p></div>
     {event.conflict && <div className="conflict-card"><b>Calendar conflict</b><p>{event.conflict}. You can still join.</p></div>}
     <section className="detail-section"><h3>About</h3><p>{event.description}</p><div className="tag-row">{event.interests.map((interest) => <span key={interest}>{interest}</span>)}</div></section>
+    {!!event.invitedCommunityIds?.length && <section className="detail-section"><h3>Invited communities</h3><div className="invited-communities">{event.invitedCommunityIds.map((id) => { const community = communities.find((item) => item.id === id); return community && <div key={id}><span>◎</span><div><b>{community.name}</b><small>{community.memberIds.length} members notified</small></div></div>; })}</div></section>}
     <section className="detail-section"><h3>Organizer</h3><button className="person-row person-link" onClick={() => onOpenPerson(organizer.id)}><Avatar id={organizer.id} /><span><b>{organizer.name} {organizer.verified && <em className="verified">✓</em>}</b><small>{organizer.role}</small></span><i>View ›</i></button></section>
     <section className="detail-section"><div className="section-heading compact"><div><h3>People going</h3><p>{event.participantIds.length + (joined && !event.participantIds.includes("erin") ? 1 : 0)} students · friends and community</p></div></div><div className="people-preview">{event.participantIds.map((id) => <button key={id} onClick={() => onOpenPerson(id)} aria-label={`View ${personById[id]?.name}`}><Avatar id={id} /><small>{personById[id]?.name.split(" ")[0]}</small><em>{id === "erin" ? "You" : friendIds.includes(id) ? "Friend" : "Student"}</em></button>)}</div></section>
     {onEdit && <button className="secondary wide edit-public" onClick={onEdit}>Edit this event</button>}
@@ -573,16 +601,23 @@ function EventDetail({ event, joined, saved, friendIds, onJoin, onSave, onOpenPe
   </article>;
 }
 
-function CreateScreen({ kind, setKind, onSubmit, inviteIds, toggleInvite, friends, continuePrivate }: { kind: "private" | "public"; setKind: (kind: "private" | "public") => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; inviteIds: string[]; toggleInvite: (id: string) => void; friends: Person[]; continuePrivate: () => void }) {
+function CreateScreen({ kind, setKind, onSubmit, inviteIds, toggleInvite, friends, communities, continuePrivate }: { kind: "private" | "public"; setKind: (kind: "private" | "public") => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; inviteIds: string[]; toggleInvite: (id: string) => void; friends: Person[]; communities: Community[]; continuePrivate: () => void }) {
   return <section className="create-screen">
     <div className="segmented"><button className={kind === "private" ? "active" : ""} onClick={() => setKind("private")}>Private</button><button className={kind === "public" ? "active" : ""} onClick={() => setKind("public")}>Public</button></div>
     <div className="create-intro"><span>{kind === "private" ? "◷" : "◎"}</span><div><h2>{kind === "private" ? "Plan with friends" : "Share with everyone"}</h2><p>{kind === "private" ? "Choose people first, then compare free time." : "Public, in person, and open to all users."}</p></div></div>
-    {kind === "private" ? <div className="invite-step"><p className="eyebrow">1 · CHOOSE WHO TO INVITE</p><div className="invite-list">{friends.map((person) => <button key={person.id} className={inviteIds.includes(person.id) ? "selected" : ""} onClick={() => toggleInvite(person.id)}><Avatar id={person.id} /><span><b>{person.name}</b><small>{person.role}</small></span><i>{inviteIds.includes(person.id) ? "✓" : "+"}</i></button>)}</div><button className="primary wide" onClick={continuePrivate}>Compare availability</button></div> : <form className="stack-form" onSubmit={onSubmit}><PublicEventFields /><button className="primary wide">Publish to everyone</button></form>}
+    {kind === "private" ? <div className="invite-step"><p className="eyebrow">1 · CHOOSE WHO TO INVITE</p><div className="invite-list">{friends.map((person) => <button key={person.id} className={inviteIds.includes(person.id) ? "selected" : ""} onClick={() => toggleInvite(person.id)}><Avatar id={person.id} /><span><b>{person.name}</b><small>{person.role}</small></span><i>{inviteIds.includes(person.id) ? "✓" : "+"}</i></button>)}</div><button className="primary wide" onClick={continuePrivate}>Compare availability</button></div> : <form className="stack-form" onSubmit={onSubmit}><PublicEventFields communities={communities} /><button className="primary wide">Publish to everyone</button></form>}
   </section>;
 }
 
-function PublicEventFields({ event }: { event?: PublicEvent }) {
-  return <><label>Event name<input name="name" required defaultValue={event?.name} placeholder="Campus sketch walk" /></label><label>Display summary<input name="summary" required defaultValue={event?.summary} placeholder="One sentence shown in event listings" /></label><label>Description<textarea name="description" required rows={3} defaultValue={event?.description} placeholder="What should people know or bring?" /></label><label>Date<input name="date" type="date" required defaultValue={event ? eventDateToInput(event) : "2026-08-14"} /></label><div className="form-row"><label>Starts<input name="start" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.startLabel)) : "18:00"} required /></label><label>Ends<input name="end" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.endLabel)) : "19:30"} required /></label></div><label>In-person location<input name="location" required defaultValue={event?.location} placeholder="Building, room, or meeting point" /></label><fieldset className="interest-editor"><legend>Interests · choose any</legend>{filterData.interests.map((interest) => <label className="interest-check" key={interest}><input type="checkbox" name="interests" value={interest} defaultChecked={event?.interests.includes(interest)} />{interest}</label>)}</fieldset><label className="check"><input name="recurring" type="checkbox" defaultChecked={Boolean(event?.recurrence)} /> Make this event recurring</label><label>Recurrence<select name="recurrence" defaultValue={event?.recurrence ?? "Every week"}><option>Every week</option><option>Every other week</option><option>Every month</option></select></label></>;
+function PublicEventFields({ event, communities }: { event?: PublicEvent; communities: Community[] }) {
+  return <><label>Event name<input name="name" required defaultValue={event?.name} placeholder="Campus sketch walk" /></label><label>Display summary<input name="summary" required defaultValue={event?.summary} placeholder="One sentence shown in event listings" /></label><label>Description<textarea name="description" required rows={3} defaultValue={event?.description} placeholder="What should people know or bring?" /></label><label>Date<input name="date" type="date" required defaultValue={event ? eventDateToInput(event) : "2026-08-14"} /></label><div className="form-row"><label>Starts<input name="start" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.startLabel)) : "18:00"} required /></label><label>Ends<input name="end" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.endLabel)) : "19:30"} required /></label></div><label>In-person location<input name="location" required defaultValue={event?.location} placeholder="Building, room, or meeting point" /></label><SearchableInterestPicker initial={event?.interests ?? []} /><fieldset className="interest-editor"><legend>Invite communities</legend>{communities.filter((community) => community.joined).map((community) => <label className="interest-check" key={community.id}><input type="checkbox" name="communities" value={community.id} defaultChecked={event?.invitedCommunityIds?.includes(community.id)} />{community.name}</label>)}{!communities.some((community) => community.joined) && <small>Join a community in People to invite it.</small>}</fieldset><label className="check"><input name="recurring" type="checkbox" defaultChecked={Boolean(event?.recurrence)} /> Make this event recurring</label><label>Recurrence<select name="recurrence" defaultValue={event?.recurrence ?? "Every week"}><option>Every week</option><option>Every other week</option><option>Every month</option></select></label></>;
+}
+
+function SearchableInterestPicker({ initial }: { initial: string[] }) {
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(initial);
+  const results = filterData.interests.filter((interest) => interest.toLowerCase().includes(search.toLowerCase()));
+  return <fieldset className="interest-editor searchable-interests"><legend>Interests · choose any</legend><label className="search-box">⌕<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search interests" /></label>{selected.map((interest) => <input key={interest} type="hidden" name="interests" value={interest} />)}<div>{results.map((interest) => <button type="button" key={interest} className={selected.includes(interest) ? "selected" : ""} onClick={() => setSelected((current) => current.includes(interest) ? current.filter((item) => item !== interest) : [...current, interest])}>{selected.includes(interest) ? "✓ " : "+ "}{interest}</button>)}</div>{!results.length && <small>No matching interests.</small>}</fieldset>;
 }
 
 function CalendarEventForm({ editor, days, onSubmit }: { editor: EventEditor; days: ReturnType<typeof getWeekDays>; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
@@ -591,11 +626,11 @@ function CalendarEventForm({ editor, days, onSubmit }: { editor: EventEditor; da
   return <form className="stack-form" onSubmit={onSubmit}>{editor.kind === "private" && <div className="invite-summary"><AvatarStack ids={editor.inviteeIds ?? []} /><span>{(editor.inviteeIds ?? []).map((id) => personById[id]?.name.split(" ")[0]).join(", ")} invited</span></div>}<label>Event name<input name="name" defaultValue={source?.name} required placeholder={editor.kind === "private" ? "Dinner together" : "Gym session"} /></label><label>Day<select name="day" defaultValue={slot?.day ?? source?.day ?? 4}>{days.map((day) => <option value={day.index} key={day.full}>{day.label}</option>)}</select></label><div className="form-row"><label>Starts<input name="start" type="time" defaultValue={numberToTime(slot?.start ?? source?.start ?? 18)} required /></label><label>Ends<input name="end" type="time" defaultValue={numberToTime(slot?.end ?? source?.end ?? 19)} required /></label></div><label>In-person location<input name="location" defaultValue={source?.location} required placeholder="Building, room, or meeting point" /></label><label className="check"><input name="recurring" type="checkbox" defaultChecked={Boolean(source?.recurrence)} /> Make this event recurring</label><label>Recurrence<select name="recurrence" defaultValue={source?.recurrence ?? "Every week"}><option>Every week</option><option>Every other week</option><option>Every month</option></select></label><button className="primary wide">{source ? "Save changes" : editor.kind === "private" ? "Create and send invites" : "Save personal event"}</button></form>;
 }
 
-function PublicEventForm({ event, onSubmit }: { event: PublicEvent; onSubmit: (form: FormEvent<HTMLFormElement>) => void }) {
-  return <form className="stack-form" onSubmit={onSubmit}><PublicEventFields event={event} /><button className="primary wide">Save changes</button></form>;
+function PublicEventForm({ event, communities, onSubmit }: { event: PublicEvent; communities: Community[]; onSubmit: (form: FormEvent<HTMLFormElement>) => void }) {
+  return <form className="stack-form" onSubmit={onSubmit}><PublicEventFields event={event} communities={communities} /><button className="primary wide">Save changes</button></form>;
 }
 
-function PeopleScreen({ friendIds, onCreate, onOpenPerson, onRemove }: { friendIds: string[]; onCreate: () => void; onOpenPerson: (id: string) => void; onRemove: (id: string) => void }) {
+function PeopleScreen({ friendIds, communities, onCreate, onOpenPerson, onRemove, createCommunity, toggleCommunity }: { friendIds: string[]; communities: Community[]; onCreate: () => void; onOpenPerson: (id: string) => void; onRemove: (id: string) => void; createCommunity: () => void; toggleCommunity: (id: string) => void }) {
   const shared = ["Thu · 5–7 PM", "Sat · 2–5 PM", "Sun · 11 AM–1 PM", "Fri · after 6 PM", "Wed · 7–9 PM"];
   const friends = people.filter((person) => friendIds.includes(person.id));
   return <section>
@@ -603,6 +638,8 @@ function PeopleScreen({ friendIds, onCreate, onOpenPerson, onRemove }: { friendI
     <div className="section-heading"><div><h2>Your people</h2><p>Shared time, without calendar details</p></div><span>{friends.length}</span></div>
     <div className="connection-list">{friends.map((person, index) => <article className="connection-card" key={person.id}><button className="connection-main" onClick={() => onOpenPerson(person.id)}><Avatar id={person.id} /><span className="connection-copy"><b>{person.name}</b><small>{person.role}</small><em><i /> Both free {shared[index % shared.length]}</em></span><strong>›</strong></button><button className="remove-friend" onClick={() => onRemove(person.id)}>Remove friend</button></article>)}</div>
     {!friends.length && <div className="empty-state"><h3>No friends yet</h3><p>Open a community attendee profile to add someone.</p></div>}
+    <div className="section-heading community-heading"><div><h2>Communities</h2><p>Groups you can plan and publish with</p></div><button className="secondary" onClick={createCommunity}>＋ Create community</button></div>
+    <div className="community-list">{communities.map((community) => <article key={community.id}><div className="community-mark">◎</div><div><h3>{community.name}</h3><p>{community.description}</p><div className="community-members"><AvatarStack ids={community.memberIds} /><span>{community.memberIds.length} members</span></div></div><button className={community.joined ? "leave" : "join"} onClick={() => toggleCommunity(community.id)}>{community.joined ? "Leave" : "Join"}</button></article>)}</div>
   </section>;
 }
 
