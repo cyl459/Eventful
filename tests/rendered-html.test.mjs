@@ -53,4 +53,12 @@ test("includes interactive filters, friends, interests, and profile settings", a
   assert.match(page, /selectedPerson \? setSelectedPerson\(null\)/);
   assert.match(page, /pointerEvents: privatePlan \? "none"/);
   assert.match(page, /`calendar-\$\{event\.id\}` === showEventSheet\.id/);
+  assert.match(page, /Location <small>Optional<\/small>/);
+  assert.match(page, /addAvailabilitySlot\(slotChoice\)/);
+  assert.match(page, /2 · Invite friends/);
+  assert.match(page, /Public community/);
+  assert.match(page, /CommunityDetail/);
+  assert.match(page, /Edit community/);
+  assert.match(page, /Preview sign-up flow/);
+  assert.match(page, /setShowSignup\(false\)/);
 });

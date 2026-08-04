@@ -310,7 +310,8 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .community-heading { align-items: center; margin-top: 22px; }
 .community-heading .secondary { min-height: 32px; padding: 0 9px; font-size: 8px; }
 .community-list { display: grid; gap: 8px; }
-.community-list article { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 9px; padding: 11px; border: 1px solid var(--line); border-radius: 15px; background: white; }
+.community-list article { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 9px; padding: 8px; border: 1px solid var(--line); border-radius: 15px; background: white; }
+.community-main { display: grid; grid-template-columns: 36px 1fr; align-items: center; gap: 9px; border: 0 !important; background: transparent !important; padding: 3px !important; text-align: left; }
 .community-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: #eee9fb; color: var(--lavender); font-size: 18px; }
 .community-list h3 { margin: 0; font-size: 11px; }
 .community-list p { margin: 2px 0 6px; color: var(--muted); font-size: 8px; line-height: 1.3; }
@@ -324,6 +325,35 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .invited-communities b, .invited-communities small { display: block; }
 .invited-communities b { font-size: 9px; }
 .invited-communities small { margin-top: 2px; color: var(--muted); font-size: 7px; }
+.community-hero { padding: 17px; border: 1px solid var(--line); border-radius: 18px; background: white; text-align: center; }
+.community-hero > span { display: inline-grid; width: 58px; height: 58px; place-items: center; border-radius: 18px; background: #eee9fb; color: var(--lavender); font-size: 28px; }
+.community-hero h2 { margin: 7px 0 4px; font-size: 20px; }
+.community-hero > p:not(.eyebrow) { margin: 0 0 10px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.community-hero .tag-row { justify-content: center; margin-bottom: 12px; }
+.community-member-list { display: grid; gap: 7px; }
+.community-member-list button { display: flex; align-items: center; gap: 9px; width: 100%; border: 1px solid var(--line); border-radius: 13px; background: white; padding: 9px; text-align: left; }
+.community-member-list button > span:not(.avatar) { flex: 1; }
+.community-member-list b, .community-member-list small { display: block; }
+.community-member-list b { font-size: 10px; }
+.community-member-list small { margin-top: 2px; color: var(--muted); font-size: 8px; }
+.community-member-list i { color: var(--muted); font-style: normal; }
+.wizard-steps { display: flex; gap: 5px; margin-bottom: 13px; }
+.wizard-steps span { flex: 1; padding: 8px; border-radius: 10px; background: #e7ebe8; color: var(--muted); font-size: 8px; font-weight: 800; text-align: center; }
+.wizard-steps span.active { background: var(--ink); color: white; }
+.wizard-steps span.done { background: #e4eddf; color: var(--green); }
+.toggle-row > div small { display: block; margin-top: 2px; color: var(--muted); font-size: 7px; }
+.switch-input { position: relative; width: 42px; height: 24px; }
+.switch-input input { position: absolute; opacity: 0; }
+.switch-input i { display: block; width: 42px; height: 24px; padding: 2px; border-radius: 14px; background: #b9c0bc; }
+.switch-input i::after { content: ""; display: block; width: 20px; height: 20px; border-radius: 50%; background: white; transition: .2s; }
+.switch-input input:checked + i { background: var(--green); }
+.switch-input input:checked + i::after { transform: translateX(18px); }
+.signup-finish { text-align: center; }
+.signup-finish .modal-illustration { margin: 8px auto 13px; }
+.signup-finish h3 { margin: 0 0 5px; }
+.signup-finish p, .invite-step > p { color: var(--muted); font-size: 9px; line-height: 1.4; }
+.external-actions { display: flex; justify-content: center; gap: 8px; }
+.external-signup { border: 0; border-radius: 11px; background: var(--ink); color: white; padding: 8px 13px; font-size: 10px; font-weight: 750; }
 .danger { border: 0; border-radius: 11px; min-height: 45px; padding: 0 13px; background: #b74e40; color: white; font-size: 11px; font-weight: 800; }
 .bottom-sheet > .wide + .wide { margin-top: 8px; }
 .edit-public { margin-bottom: 58px; }
