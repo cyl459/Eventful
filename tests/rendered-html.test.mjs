@@ -94,4 +94,9 @@ test("includes interactive filters, friends, interests, and profile settings", a
   assert.doesNotMatch(calendar, /"id": "lunch"/);
   assert.match(notifications, /"category": "invite"/);
   assert.match(notifications, /"response": "pending"/);
+  assert.match(page, /Compare friends/);
+  assert.match(page, /aria-pressed=\{compareIds\.includes/);
+  assert.match(page, /overlayFriendIds\.flatMap/);
+  assert.match(page, /setCalendarCompareIds/);
+  assert.match(css, /\.compare-friend-list/);
 });

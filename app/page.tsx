@@ -65,6 +65,7 @@ export default function Home() {
   const [calendarMode, setCalendarMode] = useState<"week" | "events">("week");
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [friendIds, setFriendIds] = useState<string[]>(["maya", "ryn", "mark"]);
+  const [calendarCompareIds, setCalendarCompareIds] = useState<string[]>([]);
   const [profile, setProfile] = useState<Profile>({ name: "Erin Chen", bio: "", interests: [...personById.erin.interests] });
   const [editInterests, setEditInterests] = useState<string[]>([]);
   const [profileSettings, setProfileSettings] = useState<ProfileSettings>({ calendarConnected: true, availabilityPrivacy: "connections", eventNotifications: true, friendNotifications: true, hideAttendees: false });
@@ -171,6 +172,7 @@ export default function Home() {
     setCalendarEvents(calendarSeed.events as CalendarEvent[]);
     setAvailability(calendarSeed.availability as Availability[]);
     setFriendIds(["maya", "ryn", "mark"]);
+    setCalendarCompareIds([]);
     setProfile({ name: "Erin Chen", bio: "", interests: [...personById.erin.interests] });
     setAccountEmail("erin.chen@university.edu");
     setProfileSettings({ calendarConnected: true, availabilityPrivacy: "connections", eventNotifications: true, friendNotifications: true, hideAttendees: false });
@@ -380,6 +382,7 @@ export default function Home() {
   function removeConfirmedFriend() {
     if (!confirmRemove) return;
     setFriendIds((current) => current.filter((id) => id !== confirmRemove.id));
+    setCalendarCompareIds((current) => current.filter((id) => id !== confirmRemove.id));
     setToast(`${confirmRemove.name} removed`);
     setConfirmRemove(null);
   }
@@ -462,6 +465,10 @@ export default function Home() {
                   mode={calendarMode}
                   setMode={setCalendarMode}
                   privatePlan={privatePlan}
+                  friends={people.filter((person) => friendIds.includes(person.id))}
+                  compareIds={calendarCompareIds}
+                  toggleCompare={(id) => setCalendarCompareIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
+                  clearComparison={() => setCalendarCompareIds([])}
                   onCancelPrivate={() => { setPrivatePlan(null); setPrivateInviteIds([]); }}
                   onSlotSelected={handleSlotSelected}
                 />
@@ -562,7 +569,7 @@ export default function Home() {
   );
 }
 
-function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset, availabilityOn, setAvailabilityOn, setShowAvailabilityEditor, setShowEventSheet, addPersonal, createEvent, mode, setMode, privatePlan, onCancelPrivate, onSlotSelected }: { events: CalendarEvent[]; availability: Availability[]; days: ReturnType<typeof getWeekDays>; weekOffset: number; setWeekOffset: (week: number) => void; availabilityOn: boolean; setAvailabilityOn: (value: boolean) => void; setShowAvailabilityEditor: (value: boolean) => void; setShowEventSheet: (event: CalendarEvent) => void; addPersonal: () => void; createEvent: () => void; mode: "week" | "events"; setMode: (mode: "week" | "events") => void; privatePlan: string[] | null; onCancelPrivate: () => void; onSlotSelected: (slot: Slot) => void }) {
+function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset, availabilityOn, setAvailabilityOn, setShowAvailabilityEditor, setShowEventSheet, addPersonal, createEvent, mode, setMode, privatePlan, friends, compareIds, toggleCompare, clearComparison, onCancelPrivate, onSlotSelected }: { events: CalendarEvent[]; availability: Availability[]; days: ReturnType<typeof getWeekDays>; weekOffset: number; setWeekOffset: (week: number) => void; availabilityOn: boolean; setAvailabilityOn: (value: boolean) => void; setShowAvailabilityEditor: (value: boolean) => void; setShowEventSheet: (event: CalendarEvent) => void; addPersonal: () => void; createEvent: () => void; mode: "week" | "events"; setMode: (mode: "week" | "events") => void; privatePlan: string[] | null; friends: Person[]; compareIds: string[]; toggleCompare: (id: string) => void; clearComparison: () => void; onCancelPrivate: () => void; onSlotSelected: (slot: Slot) => void }) {
   const dayWidth = 49;
   const [now, setNow] = useState(() => new Date());
   const [dragStart, setDragStart] = useState<{ day: number; time: number } | null>(null);
@@ -571,6 +578,7 @@ function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset,
   const visibleAvailability = availability.filter((slot) => (slot.week ?? 0) === weekOffset);
   const myEvents = events.filter((event) => ["personal", "private"].includes(event.kind) || event.id.startsWith("calendar-"));
   const sharedSlots = privatePlan ? getSharedSlots(privatePlan, availability.filter((slot) => (slot.week ?? 0) === 0)) : [];
+  const overlayFriendIds = privatePlan ?? compareIds;
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const today = dateToCalendarPosition(todayKey);
   const nowTime = now.getHours() + now.getMinutes() / 60;
@@ -607,6 +615,7 @@ function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset,
     <div className="week-toolbar">
       <button className="date-pill" onClick={() => setWeekOffset(weekOffset - 1)} aria-label="Previous week">‹</button><div><strong>{formatWeekRange(days)}</strong><span>Week view · 24 hours</span></div><button className="date-pill" onClick={() => setWeekOffset(weekOffset + 1)} aria-label="Next week">›</button>
     </div>
+    {!privatePlan && <div className="calendar-friend-compare"><div className="compare-heading"><div><strong>Compare friends</strong><small>Tap profile pictures to overlay free time</small></div>{compareIds.length > 0 && <button onClick={clearComparison}>Clear</button>}</div><div className="compare-friend-list">{friends.map((friend) => <button key={friend.id} className={compareIds.includes(friend.id) ? "selected" : ""} aria-pressed={compareIds.includes(friend.id)} onClick={() => toggleCompare(friend.id)}><Avatar id={friend.id} /><small>{friend.name.split(" ")[0]}</small>{compareIds.includes(friend.id) && <i>✓</i>}</button>)}</div>{compareIds.length > 0 && <p>{compareIds.length} friend{compareIds.length === 1 ? "" : "s"} overlaid on the calendar</p>}</div>}
     {privatePlan ? <div className="private-planning"><div><strong>Choose a time for {privatePlan.map((id) => personById[id]?.name.split(" ")[0]).join(", ")}</strong><small>Everyone’s availability is overlaid below. Drag any open time or use a suggested match.</small></div><button className="text-button" onClick={onCancelPrivate}>Cancel</button>{sharedSlots.map((slot) => <button className="suggested-slot" key={`${slot.day}-${slot.start}`} onClick={() => onSlotSelected({ ...slot, week: 0 })}>{dayNames[slot.day]} {formatHour(slot.start)}–{formatHour(slot.end)}</button>)}</div> : <div className="availability-control">
       <div><span className="availability-key" /><strong>Availability</strong><small>Friends see free time only</small></div>
       <button className={`switch ${availabilityOn ? "on" : ""}`} onClick={() => setAvailabilityOn(!availabilityOn)} aria-label="Toggle availability"><i /></button>
@@ -620,7 +629,7 @@ function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset,
           {hours.map((hour) => <i className="hour-line" key={hour} style={{ top: hour * 58 }} />)}
           {days.map((day) => <i className="day-line" key={day.full} style={{ left: `${day.index * dayWidth}px` }} />)}
           {availabilityOn && visibleAvailability.map((slot) => <button aria-label={`Available ${days[slot.day].label}`} className="availability-block" key={slot.id} style={{ left: slot.day * dayWidth + 2, width: dayWidth - 4, top: slot.start * 58, height: (slot.end - slot.start) * 58 - 4, pointerEvents: privatePlan ? "none" : "auto" }} onPointerDown={(event) => event.stopPropagation()} onClick={() => setShowAvailabilityEditor(true)}><span>Free</span></button>)}
-          {privatePlan && weekOffset === 0 && privatePlan.flatMap((id, personIndex) => (calendarSeed.peopleAvailability[id as keyof typeof calendarSeed.peopleAvailability] ?? []).map((slot, slotIndex) => <div className="friend-availability" key={`${id}-${slotIndex}`} style={{ left: slot.day * dayWidth + personIndex * 4 + 2, width: dayWidth - 5 - personIndex * 4, top: slot.start * 58, height: (slot.end - slot.start) * 58 - 3, zIndex: personIndex + 1 }}><span>{personById[id]?.initials}</span></div>))}
+          {overlayFriendIds.flatMap((id, personIndex) => (calendarSeed.peopleAvailability[id as keyof typeof calendarSeed.peopleAvailability] ?? []).map((slot, slotIndex) => <div className="friend-availability" key={`${id}-${slotIndex}`} style={{ left: slot.day * dayWidth + personIndex * 4 + 2, width: Math.max(dayWidth - 5 - personIndex * 4, 20), top: slot.start * 58, height: (slot.end - slot.start) * 58 - 3, zIndex: personIndex + 1 }}><span>{personById[id]?.initials}</span></div>))}
           {today.week === weekOffset && <div className="current-time" style={{ left: today.day * dayWidth, width: dayWidth, top: nowTime * 58 }}><i /><span>Now</span></div>}
           {dragSelection && <div className="drag-selection" style={{ left: dragSelection.day * dayWidth + 2, width: dayWidth - 4, top: dragSelection.start * 58, height: (dragSelection.end - dragSelection.start) * 58 }}><span>{formatHour(dragSelection.start)}–{formatHour(dragSelection.end)}</span></div>}
           {visibleEvents.map((event) => <button className={`calendar-event ${event.kind}`} key={event.id} style={{ left: event.day * dayWidth + 3, width: dayWidth - 6, top: event.start * 58 + 3, height: Math.max((event.end - event.start) * 58 - 7, 45) }} onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()} onClick={() => setShowEventSheet(event)}><strong>{event.name}</strong><small>{formatHour(event.start)}</small>{availabilityOn && visibleAvailability.some((slot) => slot.day === event.day && slot.start < event.end && slot.end > event.start) && <em>Free</em>}</button>)}

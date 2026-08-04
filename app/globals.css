@@ -112,6 +112,18 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .private-planning strong { font-size: 10px; }
 .private-planning small { margin-top: 3px; color: var(--muted); font-size: 8px; line-height: 1.35; }
 .suggested-slot { border: 1px solid #cdbfe5; border-radius: 15px; background: white; color: #604fa9; padding: 6px 8px; font-size: 7px; font-weight: 800; }
+.calendar-friend-compare { margin-bottom: 9px; padding: 10px; border: 1px solid #ddd6f2; border-radius: 14px; background: #f7f4fd; }
+.compare-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.compare-heading strong, .compare-heading small { display: block; }
+.compare-heading strong { font-size: 10px; }
+.compare-heading small { margin-top: 2px; color: var(--muted); font-size: 8px; }
+.compare-heading > button { border: 0; background: transparent; color: #6452af; font-size: 8px; font-weight: 800; }
+.compare-friend-list { display: flex; gap: 9px; margin-top: 9px; overflow-x: auto; padding: 1px 1px 4px; scrollbar-width: none; }
+.compare-friend-list > button { position: relative; min-width: 48px; display: grid; justify-items: center; gap: 3px; border: 0; border-radius: 11px; background: transparent; padding: 4px; color: var(--muted); font-size: 7px; }
+.compare-friend-list > button.selected { background: #e5def8; color: #59479f; font-weight: 800; }
+.compare-friend-list .avatar { width: 31px; height: 31px; font-size: 8px; }
+.compare-friend-list i { position: absolute; top: 1px; right: 3px; width: 14px; height: 14px; display: grid; place-items: center; border: 2px solid #f7f4fd; border-radius: 50%; background: #6452af; color: white; font-size: 7px; font-style: normal; }
+.calendar-friend-compare > p { margin: 5px 0 0; color: #6452af; font-size: 8px; font-weight: 750; }
 .friend-availability { position: absolute; overflow: hidden; border: 1px solid rgba(111, 85, 232, .45); border-radius: 6px; background: rgba(160, 139, 238, .22); pointer-events: none; }
 .friend-availability span { display: block; padding: 3px; color: #58459d; font-size: 6px; font-weight: 850; }
 .current-time { position: absolute; z-index: 8; height: 2px; background: var(--coral); pointer-events: none; }
