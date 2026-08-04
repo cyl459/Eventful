@@ -1,0 +1,6 @@
+[
+  { "id": "n1", "icon": "↗", "title": "Maya invited you", "body": "Lunch at Café Alma · Thu at 12:00 PM", "time": "8m", "unread": true },
+  { "id": "n2", "icon": "✓", "title": "You joined Sunset Campus Run", "body": "It’s now on your calendar.", "time": "1h", "unread": true },
+  { "id": "n3", "icon": "↻", "title": "Location updated", "body": "Open Mic Night moved to the Student Union atrium.", "time": "Yesterday", "unread": false },
+  { "id": "n4", "icon": "◌", "title": "You and Ryn are both free", "body": "Saturday from 2:00–5:00 PM", "time": "Yesterday", "unread": false }
+]

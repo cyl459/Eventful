@@ -1,0 +1,8 @@
+[
+  { "id": "erin", "name": "Erin Chen", "initials": "EC", "pronouns": "she/her", "role": "Interaction Design · Year 2", "interests": ["Design", "Running", "Film", "Study"], "color": "#6f55e8" },
+  { "id": "alejandra", "name": "Alejandra Jones", "initials": "AJ", "pronouns": "she/her", "role": "Statistics Society", "interests": ["Study", "Coffee"], "color": "#eb6f61", "verified": true },
+  { "id": "maya", "name": "Maya Brooks", "initials": "MB", "pronouns": "they/them", "role": "Media Studies · Year 2", "interests": ["Film", "Music"], "color": "#1c9b7b" },
+  { "id": "ryn", "name": "Ryn Patel", "initials": "RP", "pronouns": "he/him", "role": "Computer Science · Year 3", "interests": ["Games", "Study"], "color": "#dd8b22" },
+  { "id": "mark", "name": "Mark Lee", "initials": "ML", "pronouns": "he/him", "role": "Biology · Year 2", "interests": ["Running", "Volunteering"], "color": "#2877cc" },
+  { "id": "nora", "name": "Nora Kim", "initials": "NK", "pronouns": "she/her", "role": "Campus Runners", "interests": ["Running", "Wellness"], "color": "#c755b6", "verified": true }
+]

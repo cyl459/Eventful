@@ -1,0 +1,9 @@
+{
+  "distance": [
+    { "id": "distance-1", "label": "Within 1 km", "km": 1 },
+    { "id": "distance-5", "label": "Within 5 km", "km": 5 },
+    { "id": "distance-10", "label": "Within 10 km", "km": 10 }
+  ],
+  "availability": [{ "id": "availability", "label": "Fits my availability" }],
+  "interests": ["Study", "Sports", "Arts", "Music", "Food", "Volunteering", "Clubs", "Games", "Wellness", "Career", "Design", "Film", "Running"]
+}

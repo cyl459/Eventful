@@ -1,0 +1,13 @@
+{
+  "events": [
+    { "id": "biology", "name": "Biology Lecture", "day": 1, "start": 10, "end": 11.5, "kind": "class", "location": "Science 101" },
+    { "id": "interaction", "name": "Interaction Design", "day": 2, "start": 16, "end": 17.5, "kind": "class", "location": "Design 204" },
+    { "id": "statistics", "name": "Statistics Lab", "day": 4, "start": 13, "end": 15, "kind": "class", "location": "Math 12" },
+    { "id": "lunch", "name": "Lunch with Maya", "day": 3, "start": 12, "end": 13, "kind": "personal", "location": "Café Alma" }
+  ],
+  "availability": [
+    { "id": "avail-thu", "day": 3, "start": 17, "end": 20 },
+    { "id": "avail-fri", "day": 4, "start": 14, "end": 19 },
+    { "id": "avail-sat", "day": 5, "start": 11, "end": 18 }
+  ]
+}
