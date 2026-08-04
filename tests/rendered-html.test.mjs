@@ -66,7 +66,18 @@ test("includes interactive filters, friends, interests, and profile settings", a
   assert.match(page, /Continue with Apple/);
   assert.match(page, /Confirm password/);
   assert.match(page, /Confirm your .* email/);
+  assert.doesNotMatch(page, /Linked email/);
+  assert.doesNotMatch(page, />Confirm email</);
   assert.match(page, /provider-popup/);
   assert.match(page, /Search interests/);
   assert.match(page, /Add custom/);
+  assert.match(page, /Date.UTC\(2026, 7, 3\)/);
+  assert.match(page, /today\.week === weekOffset && day\.index === today\.day/);
+  assert.match(page, /recurring && <label>Recurrence/);
+  assert.match(page, /Account & login/);
+  assert.match(page, /Save login changes/);
+  assert.match(page, /Log out/);
+  assert.match(page, /Delete account/);
+  assert.match(page, /function SignInFlow/);
+  assert.match(page, /showSignin \?/);
 });

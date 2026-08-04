@@ -250,6 +250,13 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .settings-list b { font-size: 10px; }
 .settings-list small { color: var(--muted); font-size: 8px; margin-top: 2px; }
 .settings-list i { color: var(--muted); font-style: normal; }
+.account-settings-entry { width: 100%; display: flex; align-items: center; gap: 10px; margin-top: 9px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px; background: white; text-align: left; }
+.account-settings-entry > span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; background: #eef1ed; }
+.account-settings-entry > div { flex: 1; }
+.account-settings-entry b, .account-settings-entry small { display: block; }
+.account-settings-entry b { font-size: 10px; }
+.account-settings-entry small { margin-top: 2px; color: var(--muted); font-size: 8px; }
+.account-settings-entry i { color: var(--muted); font-size: 17px; font-style: normal; }
 .reset-button { width: 100%; margin-top: 12px; height: 38px; border: 1px solid #e4cfc9; background: #fff6f3; color: #a45043; border-radius: 12px; font-size: 10px; font-weight: 750; }
 
 .modal-layer { position: absolute; z-index: 30; inset: 0; display: flex; align-items: end; }
@@ -304,7 +311,7 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .invite-list i { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: #edf0ed; color: var(--green); font-style: normal; }
 .invite-list .selected i { background: var(--green); color: white; }
 .invite-summary { display: flex; align-items: center; gap: 9px; padding: 9px; border-radius: 12px; background: #f1ecfb; color: #58459d; font-size: 9px; font-weight: 750; }
-.searchable-interests .search-box { flex: 1 0 100%; height: 38px; }
+.searchable-interests .search-box { flex: 1 0 100%; display: flex; grid-template-columns: none; align-items: center; height: 38px; }
 .searchable-interests > div { display: flex; flex-wrap: wrap; gap: 6px; }
 .searchable-interests > small, .interest-editor > small { color: var(--muted); font-size: 8px; }
 .community-heading { align-items: center; margin-top: 22px; }
@@ -389,6 +396,11 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .signup-finish { padding: 23px 0 4px; }
 .signup-finish p { margin-bottom: 21px; }
 .signup-finish .wide + .wide { margin-top: 7px; }
+.signin-stage { min-height: min(650px, calc(100vh - 32px)); }
+.signin-form { margin-bottom: 16px; }
+.signin-providers { display: grid; gap: 9px; }
+.create-account-link { margin: 17px 0 0; color: var(--muted); font-size: 10px; text-align: center; }
+.create-account-link button { border: 0; background: transparent; color: var(--green); padding: 0; font-weight: 800; }
 .provider-popup-layer { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; }
 .provider-popup-backdrop { position: absolute; inset: 0; border: 0; background: rgba(20,28,24,.58); backdrop-filter: blur(4px); }
 .provider-popup { position: relative; width: min(390px, calc(100vw - 28px)); overflow: hidden; border: 1px solid #d8ddda; border-radius: 18px; background: white; box-shadow: 0 28px 80px rgba(0,0,0,.32); }
@@ -433,6 +445,8 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .privacy-box b, .privacy-box small { display: block; }
 .privacy-box small { color: var(--muted); margin-top: 3px; }
 .setting-done { margin-top: 4px; }
+.account-danger-zone { display: grid; gap: 8px; margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--line); }
+.danger-outline { border: 1px solid #d5a59d; border-radius: 11px; background: #fff6f3; color: #a33f33; font-size: 10px; font-weight: 800; }
 .toast { position: absolute; z-index: 50; left: 50%; top: 58px; transform: translateX(-50%); min-width: 210px; padding: 10px 13px; border-radius: 12px; background: #17231f; color: white; box-shadow: 0 8px 26px rgba(0,0,0,.25); text-align: center; font-size: 10px; font-weight: 700; }
 
 @media (max-height: 970px), (max-width: 500px) {

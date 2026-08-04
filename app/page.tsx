@@ -18,13 +18,13 @@ type EventEditor = { kind: "personal" | "private"; event?: CalendarEvent; slot?:
 type Person = (typeof people)[number];
 type Profile = { name: string; bio: string; interests: string[] };
 type ProfileSettings = { calendarConnected: boolean; availabilityPrivacy: "connections" | "private"; eventNotifications: boolean; friendNotifications: boolean; hideAttendees: boolean };
-type SettingsPanel = "calendar" | "availability" | "notifications" | "privacy" | null;
+type SettingsPanel = "account" | "calendar" | "availability" | "notifications" | "privacy" | null;
 type Community = { id: string; name: string; description: string; tags: string[]; isPublic: boolean; hostId: string; memberIds: string[]; joined: boolean };
 type CommunityDraft = Pick<Community, "name" | "description" | "tags" | "isPublic">;
 
 const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const hours = Array.from({ length: 24 }, (_, index) => index);
-const baseWeek = new Date(Date.UTC(2026, 7, 2));
+const baseWeek = new Date(Date.UTC(2026, 7, 3));
 const personById = Object.fromEntries(people.map((person) => [person.id, person]));
 
 const navItems: { id: Screen; icon: string; label: string }[] = [
@@ -78,6 +78,9 @@ export default function Home() {
   const [editingCommunity, setEditingCommunity] = useState<Community | null>(null);
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [showSignup, setShowSignup] = useState(false);
+  const [showSignin, setShowSignin] = useState(false);
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("erin.chen@university.edu");
 
   useEffect(() => {
     const stored = localStorage.getItem("scheduler-demo");
@@ -94,6 +97,7 @@ export default function Home() {
         setDistanceKm(state.distanceKm ?? 50);
         setFriendIds(state.friendIds ?? ["maya", "ryn", "mark"]);
         setProfile({ name: state.profile?.name ?? "Erin Chen", bio: state.profile?.bio ?? "", interests: state.profile?.interests ?? [...personById.erin.interests] });
+        setAccountEmail(state.accountEmail ?? "erin.chen@university.edu");
         setProfileSettings(state.profileSettings ?? { calendarConnected: true, availabilityPrivacy: "connections", eventNotifications: true, friendNotifications: true, hideAttendees: false });
         setNotifications(state.notifications ?? notificationSeed);
         setCommunities(state.communities ?? communitySeed);
@@ -106,8 +110,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem("scheduler-demo", JSON.stringify({ joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings, notifications, communities }));
-  }, [hydrated, joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, friendIds, profileSettings, notifications, communities]);
+    localStorage.setItem("scheduler-demo", JSON.stringify({ joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, accountEmail, friendIds, profileSettings, notifications, communities }));
+  }, [hydrated, joined, saved, activeFilters, distanceKm, customFilters, events, calendarEvents, availability, profile, accountEmail, friendIds, profileSettings, notifications, communities]);
 
   useEffect(() => {
     if (!toast) return;
@@ -156,12 +160,15 @@ export default function Home() {
     setAvailability(calendarSeed.availability as Availability[]);
     setFriendIds(["maya", "ryn", "mark"]);
     setProfile({ name: "Erin Chen", bio: "", interests: [...personById.erin.interests] });
+    setAccountEmail("erin.chen@university.edu");
     setProfileSettings({ calendarConnected: true, availabilityPrivacy: "connections", eventNotifications: true, friendNotifications: true, hideAttendees: false });
     setNotifications(notificationSeed);
     setCommunities(communitySeed);
     setPrivatePlan(null);
     setEventEditor(null);
     setShowSignup(false);
+    setShowSignin(false);
+    setConfirmDeleteAccount(false);
     setSelectedCommunity(null);
     setWeekOffset(0);
     setShowPrompt(false);
@@ -387,15 +394,18 @@ export default function Home() {
         <SignupFlow
           profile={profile}
           onCancel={() => setShowSignup(false)}
-          onComplete={(name, interests, connectCalendar) => {
+          onComplete={(name, email, interests, connectCalendar) => {
             const newCustomInterests = interests.filter((interest) => !filterData.interests.includes(interest));
             setProfile((current) => ({ ...current, name, interests }));
+            setAccountEmail(email);
             setCustomFilters((current) => [...new Set([...current, ...newCustomInterests])]);
             setProfileSettings((current) => ({ ...current, calendarConnected: connectCalendar }));
             setShowSignup(false);
             setToast("Account setup complete");
           }}
         />
+      ) : showSignin ? (
+        <SignInFlow email={accountEmail} onSignIn={() => { setShowSignin(false); setToast("Welcome back"); }} onCreateAccount={() => { setShowSignin(false); setShowSignup(true); }} />
       ) : (
       <>
       <div className="phone" aria-label="Scheduler Thing mobile app demo">
@@ -455,7 +465,7 @@ export default function Home() {
               {screen === "create" && !selectedEvent && !selectedPerson && <CreateScreen kind={createKind} setKind={setCreateKind} onSubmit={createEvent} inviteIds={privateInviteIds} toggleInvite={(id) => setPrivateInviteIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} friends={people.filter((person) => friendIds.includes(person.id))} communities={communities} continuePrivate={choosePrivateTime} />}
               {screen === "people" && !selectedEvent && !selectedPerson && !selectedCommunity && <PeopleScreen friendIds={friendIds} communities={communities} onCreate={() => setEventEditor({ kind: "personal" })} onOpenPerson={openPerson} onOpenCommunity={setSelectedCommunity} onRemove={(id) => setConfirmRemove(personById[id])} createCommunity={() => { setEditingCommunity(null); setShowCommunityCreator(true); }} toggleCommunity={toggleCommunity} />}
               {screen === "notifications" && !selectedEvent && !selectedPerson && <NotificationsScreen items={notifications} markAll={() => setNotifications((current) => current.map((item) => ({ ...item, unread: false })))} open={(item) => { setNotifications((current) => current.map((notification) => notification.id === item.id ? { ...notification, unread: false } : notification)); setSelectedNotification(item); }} remove={(id) => setNotifications((current) => current.filter((item) => item.id !== id))} />}
-              {screen === "profile" && !selectedEvent && !selectedPerson && <ProfileScreen activeFilters={displayFilters} profile={profile} settings={profileSettings} edit={() => { setEditInterests(profile.interests); setShowProfileEditor(true); }} openSettings={(panel) => panel === "filters" ? setShowFilters(true) : setSettingsPanel(panel)} />}
+              {screen === "profile" && !selectedEvent && !selectedPerson && <><ProfileScreen activeFilters={displayFilters} profile={profile} settings={profileSettings} edit={() => { setEditInterests(profile.interests); setShowProfileEditor(true); }} openSettings={(panel) => panel === "filters" ? setShowFilters(true) : setSettingsPanel(panel)} /><button className="account-settings-entry" onClick={() => setSettingsPanel("account")}><span>＠</span><div><b>Account & login</b><small>{accountEmail}</small></div><i>›</i></button></>}
             </div>
 
             <nav className="bottom-nav" aria-label="Primary navigation">
@@ -510,6 +520,8 @@ export default function Home() {
             <button className="text-button wide" onClick={() => setJoinPending(null)}>Go back</button>
           </Modal>}
 
+          {confirmDeleteAccount && <Modal title="Delete your account?" onClose={() => setConfirmDeleteAccount(false)}><p>This removes your local demo profile, events, communities, and settings. This cannot be undone inside the demo.</p><button className="danger wide" onClick={() => { resetDemo(); setShowSignup(true); }}>Delete account</button><button className="text-button wide" onClick={() => setConfirmDeleteAccount(false)}>Cancel</button></Modal>}
+
           {showProfileEditor && <Modal title="Edit profile" onClose={() => setShowProfileEditor(false)}>
             <form className="stack-form" onSubmit={saveProfile}>
               <label>Name<input name="name" defaultValue={profile.name} required maxLength={60} /></label>
@@ -520,7 +532,7 @@ export default function Home() {
             </form>
           </Modal>}
 
-          {settingsPanel && <SettingsModal panel={settingsPanel} settings={profileSettings} setSettings={setProfileSettings} close={() => setSettingsPanel(null)} notify={(message) => setToast(message)} />}
+          {settingsPanel && <SettingsModal panel={settingsPanel} email={accountEmail} setEmail={setAccountEmail} settings={profileSettings} setSettings={setProfileSettings} close={() => setSettingsPanel(null)} notify={(message) => setToast(message)} logout={() => { setSettingsPanel(null); setShowSignin(true); }} deleteAccount={() => { setSettingsPanel(null); setConfirmDeleteAccount(true); }} />}
         </div>
       </div>
       <p className="demo-caption">Interactive student planning demo · all app content stays inside the device</p>
@@ -540,7 +552,8 @@ function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset,
   const visibleAvailability = availability.filter((slot) => (slot.week ?? 0) === weekOffset);
   const myEvents = events.filter((event) => ["personal", "private"].includes(event.kind) || event.id.startsWith("calendar-"));
   const sharedSlots = privatePlan ? getSharedSlots(privatePlan, availability.filter((slot) => (slot.week ?? 0) === 0)) : [];
-  const today = dateToCalendarPosition(now.toISOString().slice(0, 10));
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const today = dateToCalendarPosition(todayKey);
   const nowTime = now.getHours() + now.getMinutes() / 60;
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60000); return () => window.clearInterval(timer); }, []);
   function point(event: ReactPointerEvent<HTMLDivElement>) {
@@ -582,7 +595,7 @@ function CalendarScreen({ events, availability, days, weekOffset, setWeekOffset,
     {!privatePlan && <div className="calendar-actions"><div><button className="primary" onClick={createEvent}>＋ Create event</button><button className="secondary" onClick={addPersonal}>Personal</button><button className="secondary" onClick={() => setShowAvailabilityEditor(true)}>Availability</button></div><button className="ghost" onClick={() => setWeekOffset(0)}>Today</button></div>}
     <div className="week-scroll">
       <div className="week-grid">
-        <div className="day-head spacer" />{days.map((day) => <div className={`day-head ${weekOffset === 0 && day.index === 3 ? "today" : ""}`} key={day.full}><b>{day.name}</b><span>{day.date}</span></div>)}
+        <div className="day-head spacer" />{days.map((day) => <div className={`day-head ${today.week === weekOffset && day.index === today.day ? "today" : ""}`} key={day.full}><b>{day.name}</b><span>{day.date}</span></div>)}
         <div className="time-labels">{hours.map((hour) => <span key={hour} style={{ top: hour * 58 }}>{formatHour(hour)}</span>)}</div>
         <div className="calendar-canvas" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={() => { setDragStart(null); setDragSelection(null); }}>
           {hours.map((hour) => <i className="hour-line" key={hour} style={{ top: hour * 58 }} />)}
@@ -641,7 +654,8 @@ function CreateScreen({ kind, setKind, onSubmit, inviteIds, toggleInvite, friend
 }
 
 function PublicEventFields({ event, communities }: { event?: PublicEvent; communities: Community[] }) {
-  return <><label>Event name<input name="name" required defaultValue={event?.name} placeholder="Campus sketch walk" /></label><label>Display summary<input name="summary" required defaultValue={event?.summary} placeholder="One sentence shown in event listings" /></label><label>Description<textarea name="description" required rows={3} defaultValue={event?.description} placeholder="What should people know or bring?" /></label><label>Date<input name="date" type="date" required defaultValue={event ? eventDateToInput(event) : "2026-08-14"} /></label><div className="form-row"><label>Starts<input name="start" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.startLabel)) : "18:00"} required /></label><label>Ends<input name="end" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.endLabel)) : "19:30"} required /></label></div><label>In-person location<input name="location" required defaultValue={event?.location} placeholder="Building, room, or meeting point" /></label><SearchableInterestPicker initial={event?.interests ?? []} /><fieldset className="interest-editor"><legend>Invite communities</legend>{communities.filter((community) => community.joined).map((community) => <label className="interest-check" key={community.id}><input type="checkbox" name="communities" value={community.id} defaultChecked={event?.invitedCommunityIds?.includes(community.id)} />{community.name}</label>)}{!communities.some((community) => community.joined) && <small>Join a community in People to invite it.</small>}</fieldset><label className="check"><input name="recurring" type="checkbox" defaultChecked={Boolean(event?.recurrence)} /> Make this event recurring</label><label>Recurrence<select name="recurrence" defaultValue={event?.recurrence ?? "Every week"}><option>Every week</option><option>Every other week</option><option>Every month</option></select></label></>;
+  const [recurring, setRecurring] = useState(Boolean(event?.recurrence));
+  return <><label>Event name<input name="name" required defaultValue={event?.name} placeholder="Campus sketch walk" /></label><label>Display summary<input name="summary" required defaultValue={event?.summary} placeholder="One sentence shown in event listings" /></label><label>Description<textarea name="description" required rows={3} defaultValue={event?.description} placeholder="What should people know or bring?" /></label><label>Date<input name="date" type="date" required defaultValue={event ? eventDateToInput(event) : "2026-08-14"} /></label><div className="form-row"><label>Starts<input name="start" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.startLabel)) : "18:00"} required /></label><label>Ends<input name="end" type="time" defaultValue={event ? numberToTime(timeLabelToNumber(event.endLabel)) : "19:30"} required /></label></div><label>In-person location<input name="location" required defaultValue={event?.location} placeholder="Building, room, or meeting point" /></label><SearchableInterestPicker initial={event?.interests ?? []} /><fieldset className="interest-editor"><legend>Invite communities</legend>{communities.filter((community) => community.joined).map((community) => <label className="interest-check" key={community.id}><input type="checkbox" name="communities" value={community.id} defaultChecked={event?.invitedCommunityIds?.includes(community.id)} />{community.name}</label>)}{!communities.some((community) => community.joined) && <small>Join a community in People to invite it.</small>}</fieldset><label className="check"><input name="recurring" type="checkbox" checked={recurring} onChange={(change) => setRecurring(change.target.checked)} /> Make this event recurring</label>{recurring && <label>Recurrence<select name="recurrence" defaultValue={event?.recurrence ?? "Every week"}><option>Every week</option><option>Every other week</option><option>Every month</option></select></label>}</>;
 }
 
 function SearchableInterestPicker({ initial }: { initial: string[] }) {
@@ -654,7 +668,8 @@ function SearchableInterestPicker({ initial }: { initial: string[] }) {
 function CalendarEventForm({ editor, days, onSubmit }: { editor: EventEditor; days: ReturnType<typeof getWeekDays>; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
   const source = editor.event;
   const slot = editor.slot;
-  return <form className="stack-form" onSubmit={onSubmit}>{editor.kind === "private" && <div className="invite-summary"><AvatarStack ids={editor.inviteeIds ?? []} /><span>{(editor.inviteeIds ?? []).map((id) => personById[id]?.name.split(" ")[0]).join(", ")} invited</span></div>}<label>Event name<input name="name" defaultValue={source?.name} required placeholder={editor.kind === "private" ? "Dinner together" : "Gym session"} /></label><label>Day<select name="day" defaultValue={slot?.day ?? source?.day ?? 4}>{days.map((day) => <option value={day.index} key={day.full}>{day.label}</option>)}</select></label><div className="form-row"><label>Starts<input name="start" type="time" defaultValue={numberToTime(slot?.start ?? source?.start ?? 18)} required /></label><label>Ends<input name="end" type="time" defaultValue={numberToTime(slot?.end ?? source?.end ?? 19)} required /></label></div><label>Location <small>Optional</small><input name="location" defaultValue={source?.location} placeholder="Building, room, or meeting point" /></label><label className="check"><input name="recurring" type="checkbox" defaultChecked={Boolean(source?.recurrence)} /> Make this event recurring</label><label>Recurrence<select name="recurrence" defaultValue={source?.recurrence ?? "Every week"}><option>Every week</option><option>Every other week</option><option>Every month</option></select></label><button className="primary wide">{source ? "Save changes" : editor.kind === "private" ? "Create and send invites" : "Save personal event"}</button></form>;
+  const [recurring, setRecurring] = useState(Boolean(source?.recurrence));
+  return <form className="stack-form" onSubmit={onSubmit}>{editor.kind === "private" && <div className="invite-summary"><AvatarStack ids={editor.inviteeIds ?? []} /><span>{(editor.inviteeIds ?? []).map((id) => personById[id]?.name.split(" ")[0]).join(", ")} invited</span></div>}<label>Event name<input name="name" defaultValue={source?.name} required placeholder={editor.kind === "private" ? "Dinner together" : "Gym session"} /></label><label>Day<select name="day" defaultValue={slot?.day ?? source?.day ?? 4}>{days.map((day) => <option value={day.index} key={day.full}>{day.label}</option>)}</select></label><div className="form-row"><label>Starts<input name="start" type="time" defaultValue={numberToTime(slot?.start ?? source?.start ?? 18)} required /></label><label>Ends<input name="end" type="time" defaultValue={numberToTime(slot?.end ?? source?.end ?? 19)} required /></label></div><label>Location <small>Optional</small><input name="location" defaultValue={source?.location} placeholder="Building, room, or meeting point" /></label><label className="check"><input name="recurring" type="checkbox" checked={recurring} onChange={(change) => setRecurring(change.target.checked)} /> Make this event recurring</label>{recurring && <label>Recurrence<select name="recurrence" defaultValue={source?.recurrence ?? "Every week"}><option>Every week</option><option>Every other week</option><option>Every month</option></select></label>}<button className="primary wide">{source ? "Save changes" : editor.kind === "private" ? "Create and send invites" : "Save personal event"}</button></form>;
 }
 
 function PublicEventForm({ event, communities, onSubmit }: { event: PublicEvent; communities: Community[]; onSubmit: (form: FormEvent<HTMLFormElement>) => void }) {
@@ -691,7 +706,7 @@ function CommunityCreator({ initial, onSave }: { initial?: Community; onSave: (d
   return <div className="community-wizard"><div className="wizard-steps"><span className={step === 1 ? "active" : "done"}>1 · Details</span><span className={step === 2 ? "active" : ""}>2 · Invite friends</span></div>{step === 1 ? <form className="stack-form" onSubmit={next}><label>Community name<input name="name" required defaultValue={details.name} placeholder="Weekend Creators" /></label><label>Description<textarea name="description" required rows={3} defaultValue={details.description} placeholder="What brings this group together?" /></label><label>Tags<input name="tags" required defaultValue={details.tags.join(", ")} placeholder="Design, Career, Workshops" /></label><div className="toggle-row"><div><b>Public community</b><small>Anyone can find and join it</small></div><label className="switch-input"><input name="public" type="checkbox" defaultChecked={details.isPublic} /><i /></label></div><button className="primary wide">Continue to invites</button></form> : <div className="invite-step"><p className="privacy-note">Invite friends now, or finish with only yourself as a member.</p><div className="invite-list">{people.filter((person) => person.id !== "erin").map((person) => <button key={person.id} className={memberIds.includes(person.id) ? "selected" : ""} onClick={() => setMemberIds((current) => current.includes(person.id) ? current.filter((id) => id !== person.id) : [...current, person.id])}><Avatar id={person.id} /><span><b>{person.name}</b><small>{person.role}</small></span><i>{memberIds.includes(person.id) ? "✓" : "+"}</i></button>)}</div><div className="form-row"><button className="secondary" onClick={() => setStep(1)}>Back</button><button className="primary" onClick={() => onSave(details, memberIds)}>{initial ? "Save changes" : "Create community"}</button></div></div>}</div>;
 }
 
-function SignupFlow({ profile, onCancel, onComplete }: { profile: Profile; onCancel: () => void; onComplete: (name: string, interests: string[], connectCalendar: boolean) => void }) {
+function SignupFlow({ profile, onCancel, onComplete }: { profile: Profile; onCancel: () => void; onComplete: (name: string, email: string, interests: string[], connectCalendar: boolean) => void }) {
   type Provider = "email" | "google" | "apple";
   const providerAccounts = {
     google: { name: "Jordan Lee", email: "jordan.lee@university.edu", mark: "G" },
@@ -735,8 +750,7 @@ function SignupFlow({ profile, onCancel, onComplete }: { profile: Profile; onCan
       setName(String(data.get("name")).trim());
       setEmail(String(data.get("email")).trim());
     } else {
-      const confirmation = String(data.get("confirmEmail")).trim().toLowerCase();
-      if (confirmation !== email.toLowerCase()) return setError("Enter the same email to confirm this account.");
+      setEmail(String(data.get("email")).trim());
     }
     setError("");
     setStep("interests");
@@ -760,15 +774,19 @@ function SignupFlow({ profile, onCancel, onComplete }: { profile: Profile; onCan
 
       {step === "account" && provider === "email" && <form className="stack-form signup-account-form" onSubmit={submitAccount}><div className="signup-intro"><h2>Create your login</h2><p>Use an email you can access. Your password stays inside this local demo.</p></div><label>Name<input name="name" required autoComplete="name" defaultValue={name} placeholder="Your full name" /></label><label>Email<input name="email" type="email" required autoComplete="email" defaultValue={email} placeholder="you@university.edu" /></label><label>Password<input name="password" type="password" required minLength={8} autoComplete="new-password" placeholder="At least 8 characters" /></label><label>Confirm password<input name="confirmPassword" type="password" required minLength={8} autoComplete="new-password" placeholder="Enter it again" /></label>{error && <p className="signup-error" role="alert">{error}</p>}<div className="signup-form-actions"><button type="button" className="secondary" onClick={() => { setStep("method"); setError(""); }}>Back</button><button className="primary">Continue</button></div></form>}
 
-      {step === "account" && provider && provider !== "email" && <form className="stack-form signup-account-form" onSubmit={submitAccount}><div className="signup-intro"><span className={`provider-account-mark ${provider}`}>{providerAccounts[provider].mark}</span><h2>Confirm your {provider === "google" ? "Google" : "Apple"} email</h2><p>Your name was added from the linked account.</p></div><label>Name from account<input value={name} readOnly /></label><label>Linked email<input value={email} readOnly /></label><label>Confirm email<input name="confirmEmail" type="email" required autoComplete="email" placeholder={email} /></label>{error && <p className="signup-error" role="alert">{error}</p>}<div className="signup-form-actions"><button type="button" className="secondary" onClick={() => { setStep("method"); setProvider(null); setError(""); }}>Back</button><button className="primary">Confirm and continue</button></div></form>}
+      {step === "account" && provider && provider !== "email" && <form className="stack-form signup-account-form" onSubmit={submitAccount}><div className="signup-intro"><span className={`provider-account-mark ${provider}`}>{providerAccounts[provider].mark}</span><h2>Confirm your {provider === "google" ? "Google" : "Apple"} email</h2><p>Your name and email were added from the selected account.</p></div><label>Name from account<input value={name} readOnly /></label><label>Email<input name="email" type="email" required autoComplete="email" defaultValue={email} /></label><div className="signup-form-actions"><button type="button" className="secondary" onClick={() => { setStep("method"); setProvider(null); setError(""); }}>Back</button><button className="primary">Confirm and continue</button></div></form>}
 
       {step === "interests" && <div className="signup-interests"><div className="signup-intro"><h2>What are you into?</h2><p>Search existing interests or add one of your own. These improve Discovery recommendations.</p></div><label className="signup-search"><span>⌕</span><input autoFocus value={interestSearch} onChange={(event) => setInterestSearch(event.target.value)} placeholder="Search interests" /></label><div className="signup-interest-results">{matchingInterests.map((interest) => <button type="button" key={interest} className={interests.includes(interest) ? "selected" : ""} onClick={() => setInterests((current) => current.includes(interest) ? current.filter((item) => item !== interest) : [...current, interest])}>{interests.includes(interest) ? "✓ " : "+ "}{interest}</button>)}{!matchingInterests.length && <p>No matching interests yet.</p>}</div><button type="button" className="signup-custom-interest" disabled={!interestSearch.trim() || exactInterest} onClick={addCustomInterest}>{interestSearch.trim() && !exactInterest ? `+ Add custom “${interestSearch.trim()}”` : "Type a new interest to add it"}</button><div className="selected-interest-summary"><b>{interests.length} selected</b>{interests.length > 0 && <span>{interests.join(" · ")}</span>}</div><div className="signup-form-actions"><button className="secondary" onClick={() => setStep("account")}>Back</button><button className="primary" onClick={() => setStep("calendar")}>Continue</button></div></div>}
 
-      {step === "calendar" && <div className="signup-finish"><div className="modal-illustration">▦</div><h2>Connect your university calendar</h2><p>Import classes so Scheduler Thing can find shared free time. You can change this later in Profile.</p><button className="primary wide" onClick={() => onComplete(name, interests, true)}>Connect and enter app</button><button className="text-button wide" onClick={() => onComplete(name, interests, false)}>Skip and enter app</button></div>}
+      {step === "calendar" && <div className="signup-finish"><div className="modal-illustration">▦</div><h2>Connect your university calendar</h2><p>Import classes so Scheduler Thing can find shared free time. You can change this later in Profile.</p><button className="primary wide" onClick={() => onComplete(name, email, interests, true)}>Connect and enter app</button><button className="text-button wide" onClick={() => onComplete(name, email, interests, false)}>Skip and enter app</button></div>}
     </div>
 
     {popupProvider && <div className="provider-popup-layer"><button className="provider-popup-backdrop" onClick={() => setPopupProvider(null)} aria-label="Close account window" /><section className="provider-popup" role="dialog" aria-modal="true" aria-label={`${popupProvider === "google" ? "Google" : "Apple"} account selector`}><div className="fake-browser-bar"><i /><i /><i /><span>{popupProvider === "google" ? "accounts.google.com" : "appleid.apple.com"}</span></div><div className="provider-popup-content"><span className={`provider-account-mark ${popupProvider}`}>{providerAccounts[popupProvider].mark}</span><p className="eyebrow">SIMULATED ACCOUNT WINDOW</p><h2>Continue with {popupProvider === "google" ? "Google" : "Apple"}</h2><p>Scheduler Thing will receive your name and email.</p><button className="fake-account" onClick={acceptProvider}><span>{initials(providerAccounts[popupProvider].name)}</span><div><b>{providerAccounts[popupProvider].name}</b><small>{providerAccounts[popupProvider].email}</small></div><i>›</i></button><button className="text-button wide" onClick={() => setPopupProvider(null)}>Cancel</button></div></section></div>}
   </section>;
+}
+
+function SignInFlow({ email, onSignIn, onCreateAccount }: { email: string; onSignIn: () => void; onCreateAccount: () => void }) {
+  return <section className="signup-stage signin-stage" aria-label="Sign in to Scheduler Thing"><div className="signup-brand"><span>ST</span><div><p className="eyebrow">SCHEDULER THING</p><h1>Welcome back</h1></div></div><div className="signup-card"><div className="signup-intro"><h2>Sign in to your account</h2><p>Access your calendar, friends, communities, and plans.</p></div><form className="stack-form signin-form" onSubmit={(event) => { event.preventDefault(); onSignIn(); }}><label>Email<input name="email" type="email" required defaultValue={email} autoComplete="email" /></label><label>Password<input name="password" type="password" required minLength={8} autoComplete="current-password" placeholder="Your password" /></label><button className="primary wide">Sign in</button></form><div className="auth-divider"><span>or</span></div><div className="signin-providers"><button className="provider-button google" onClick={onSignIn}><i>G</i><span>Continue with Google</span></button><button className="provider-button apple" onClick={onSignIn}><i>●</i><span>Continue with Apple</span></button></div><p className="create-account-link">New to Scheduler Thing? <button onClick={onCreateAccount}>Create an account</button></p></div></section>;
 }
 
 function NotificationsScreen({ items, markAll, open, remove }: { items: typeof notificationSeed; markAll: () => void; open: (item: (typeof notificationSeed)[number]) => void; remove: (id: string) => void }) {
@@ -800,15 +818,28 @@ function FilterModal({ search, setSearch, options, active, toggle, distanceKm, s
   return <div className="modal-layer"><button className="modal-backdrop" onClick={close} aria-label="Close filters" /><section className="bottom-sheet filter-sheet" style={{ transform: `translateY(${sheetOffset}px)`, transition: dragStart === null ? "transform .2s ease" : "none" }}><button className="sheet-handle drag-handle" aria-label="Drag down to close filters" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDragStart(event.clientY - sheetOffset); }} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={() => { setDragStart(null); setSheetOffset(0); }} /><div className="sheet-title"><div><p className="eyebrow">PERSONALIZE DISCOVER</p><h2>Event filters</h2></div><button className="text-button" onClick={clear}>Clear all</button></div><div className="filter-control"><div><b>Distance</b><strong>{distanceKm === 50 ? "Any distance" : `${distanceKm} km`}</strong></div><input aria-label="Maximum event distance" type="range" min="1" max="50" value={distanceKm} onChange={(event) => setDistanceKm(Number(event.target.value))} /><small>Move to 50 km to show all events.</small></div><div className="filter-control toggle-control"><div><b>Availability</b><small>Only show events that fit your calendar</small></div><button className={`switch ${availabilityOnly ? "on" : ""}`} onClick={() => setAvailabilityOnly(!availabilityOnly)} aria-label="Only show events that fit availability"><i /></button></div><label className="search-box large">⌕<input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search interests" /></label><div className="filter-results">{results.map((option) => <button key={option.id} onClick={() => toggle(option.id)}><span><b>{option.label}</b><small>{option.kind}</small></span><i className={active.includes(option.id) ? "checked" : ""}>{active.includes(option.id) ? "✓" : "+"}</i></button>)}<button className="custom-filter" disabled={!search.trim() || exact} onClick={() => addCustom(search.trim())}><span><b>{search.trim() && !exact ? `Add custom “${search.trim()}”` : "Add custom interest"}</b><small>{search.trim() && !exact ? "Save as a reusable interest" : "Type a new interest above"}</small></span><i>＋</i></button></div><button className="primary wide" onClick={close}>Show filtered events</button></section></div>;
 }
 
-function SettingsModal({ panel, settings, setSettings, close, notify }: { panel: Exclude<SettingsPanel, null>; settings: ProfileSettings; setSettings: (settings: ProfileSettings) => void; close: () => void; notify: (message: string) => void }) {
+function SettingsModal({ panel, email, setEmail, settings, setSettings, close, notify, logout, deleteAccount }: { panel: Exclude<SettingsPanel, null>; email: string; setEmail: (email: string) => void; settings: ProfileSettings; setSettings: (settings: ProfileSettings) => void; close: () => void; notify: (message: string) => void; logout: () => void; deleteAccount: () => void }) {
+  const [accountError, setAccountError] = useState("");
   const update = (next: Partial<ProfileSettings>, message: string) => { setSettings({ ...settings, ...next }); notify(message); };
-  const titles = { calendar: "Connected calendar", availability: "Availability privacy", notifications: "Notifications", privacy: "Privacy & safety" };
+  const titles = { account: "Account & login", calendar: "Connected calendar", availability: "Availability privacy", notifications: "Notifications", privacy: "Privacy & safety" };
+  function saveAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const password = String(data.get("password"));
+    const confirmation = String(data.get("confirmPassword"));
+    if (password && password.length < 8) return setAccountError("Use at least 8 characters for a new password.");
+    if (password !== confirmation) return setAccountError("The new passwords do not match.");
+    setEmail(String(data.get("email")).trim());
+    notify(password ? "Email and password updated" : "Email updated");
+    close();
+  }
   return <Modal title={titles[panel]} onClose={close}>
+    {panel === "account" && <><form className="stack-form account-form" onSubmit={saveAccount}><label>Email<input name="email" type="email" required defaultValue={email} autoComplete="email" /></label><label>New password <small>Optional</small><input name="password" type="password" minLength={8} autoComplete="new-password" placeholder="At least 8 characters" /></label><label>Confirm new password<input name="confirmPassword" type="password" minLength={8} autoComplete="new-password" placeholder="Enter it again" /></label>{accountError && <p className="signup-error" role="alert">{accountError}</p>}<button className="primary wide">Save login changes</button></form><div className="account-danger-zone"><button className="secondary wide" onClick={logout}>Log out</button><button className="danger-outline wide" onClick={deleteAccount}>Delete account</button></div></>}
     {panel === "calendar" && <div className="setting-panel"><p>Import classes and accepted events into your schedule.</p><button className={settings.calendarConnected ? "reset-button" : "primary wide"} onClick={() => update({ calendarConnected: !settings.calendarConnected }, settings.calendarConnected ? "Calendar disconnected" : "Calendar connected")}>{settings.calendarConnected ? "Disconnect university calendar" : "Connect university calendar"}</button></div>}
     {panel === "availability" && <div className="setting-panel"><label className="setting-choice"><input type="radio" checked={settings.availabilityPrivacy === "connections"} onChange={() => update({ availabilityPrivacy: "connections" }, "Availability visible to friends")} /> Connections can see when I am free</label><label className="setting-choice"><input type="radio" checked={settings.availabilityPrivacy === "private"} onChange={() => update({ availabilityPrivacy: "private" }, "Availability is private")} /> Keep my availability private</label></div>}
     {panel === "notifications" && <div className="setting-panel"><ToggleRow label="Event invitations and changes" value={settings.eventNotifications} onChange={(value) => update({ eventNotifications: value }, "Notification settings updated")} /><ToggleRow label="Friend requests and shared plans" value={settings.friendNotifications} onChange={(value) => update({ friendNotifications: value }, "Notification settings updated")} /></div>}
     {panel === "privacy" && <div className="setting-panel"><ToggleRow label="Hide my name in attendee lists" value={settings.hideAttendees} onChange={(value) => update({ hideAttendees: value }, "Privacy setting updated")} /><div className="privacy-box"><b>Blocked users</b><small>No blocked users</small></div><button className="secondary wide" onClick={() => notify("Safety report form opened")}>Report a safety concern</button></div>}
-    <button className="primary wide setting-done" onClick={close}>Done</button>
+    {panel !== "account" && <button className="primary wide setting-done" onClick={close}>Done</button>}
   </Modal>;
 }
 
