@@ -36,7 +36,7 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .avatar-button { width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 50%; background: var(--white); font-size: 20px; position: relative; }
 .avatar-button i { position: absolute; width: 8px; height: 8px; right: 1px; top: 1px; border: 2px solid white; border-radius: 50%; background: var(--coral); }
 .screen-scroll { height: calc(100% - 147px); overflow: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 0 18px 34px; }
-.screen-scroll::-webkit-scrollbar, .week-scroll::-webkit-scrollbar { display: none; }
+.screen-scroll::-webkit-scrollbar { display: none; }
 .bottom-nav { position: absolute; z-index: 8; left: 0; right: 0; bottom: 0; height: 69px; padding: 7px 30px 11px; display: flex; align-items: flex-end; justify-content: space-between; border-top: 1px solid var(--line); background: rgba(255, 255, 255, .97); backdrop-filter: blur(12px); }
 .bottom-nav button { border: 0; background: transparent; color: #8b938f; min-width: 55px; height: 48px; display: grid; justify-items: center; align-content: center; gap: 2px; }
 .bottom-nav button span { font-size: 22px; line-height: 1; }
@@ -69,7 +69,10 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .ghost { background: transparent; color: var(--green); }
 .text-button { background: transparent; color: var(--green); }
 .wide { width: 100%; min-height: 45px; }
-.week-scroll { height: 430px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.week-scroll { height: 430px; overflow-y: scroll; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: var(--green) #edf0ee; scrollbar-gutter: stable; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.week-scroll::-webkit-scrollbar { width: 8px; }
+.week-scroll::-webkit-scrollbar-track { background: #edf0ee; }
+.week-scroll::-webkit-scrollbar-thumb { border: 2px solid #edf0ee; border-radius: 8px; background: var(--green); }
 .week-grid { width: 100%; display: grid; grid-template-columns: 34px repeat(7, 49px); grid-template-rows: 48px 1392px; }
 .day-head { position: sticky; top: 0; z-index: 3; background: white; display: grid; place-items: center; align-content: center; gap: 2px; border-bottom: 1px solid var(--line); }
 .day-head b { color: var(--muted); font-size: 7px; text-transform: uppercase; }
@@ -231,6 +234,15 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .notification-list h3 { margin: 0 15px 2px 0; font-size: 11px; }
 .notification-list p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.35; }
 .notification-list small { display: block; margin-top: 4px; color: #9aa19d; font-size: 8px; }
+.invite-response { display: inline-block; margin-top: 6px; border-radius: 8px; padding: 3px 6px; background: #fff0d6; color: #9b6114; font-size: 7px; font-style: normal; font-weight: 800; }
+.invite-response.accepted { background: #e6f3d8; color: #477121; }
+.invite-response.declined { background: #f5e6e3; color: #9a4338; }
+.invite-response-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.invite-response-actions button { min-height: 43px; border: 1px solid #cadbd2; border-radius: 11px; background: white; color: var(--green); font-size: 10px; font-weight: 800; }
+.invite-response-actions button.selected, .invite-response-actions button:first-child { border-color: var(--ink); background: var(--ink); color: white; }
+.invite-response-actions button.decline { border-color: #d6b1aa; color: #a1493e; }
+.invite-response-actions button.decline.selected { background: #a1493e; color: white; }
+.invite-response-actions button.later { grid-column: 1 / -1; border-color: var(--line); color: var(--muted); }
 .profile-card { text-align: center; background: white; border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
 .profile-card .avatar { width: 62px; height: 62px; font-size: 16px; }
 .profile-card h2 { margin: 8px 0 2px; font-size: 19px; }

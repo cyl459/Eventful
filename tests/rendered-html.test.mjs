@@ -30,6 +30,9 @@ test("server-renders the complete seven-day calendar", async () => {
 
 test("includes interactive filters, friends, interests, and profile settings", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const calendar = await readFile(new URL("../app/data/calendar.json", import.meta.url), "utf8");
+  const notifications = await readFile(new URL("../app/data/notifications.json", import.meta.url), "utf8");
   assert.match(page, /type="range"/);
   assert.match(page, /availabilityOnly/);
   assert.match(page, /onPointerMove=\{drag\}/);
@@ -80,4 +83,15 @@ test("includes interactive filters, friends, interests, and profile settings", a
   assert.match(page, /Delete account/);
   assert.match(page, /function SignInFlow/);
   assert.match(page, /showSignin \?/);
+  assert.match(page, />✓ Accept</);
+  assert.match(page, />Decline</);
+  assert.match(page, />Decide later</);
+  assert.match(page, /response === "accepted"/);
+  assert.match(page, /event\.id !== "lunch"/);
+  assert.match(page, /notificationSeed\.find/);
+  assert.match(css, /scrollbar-gutter: stable/);
+  assert.match(css, /week-scroll::\-webkit-scrollbar-thumb/);
+  assert.doesNotMatch(calendar, /"id": "lunch"/);
+  assert.match(notifications, /"category": "invite"/);
+  assert.match(notifications, /"response": "pending"/);
 });

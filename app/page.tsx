@@ -92,14 +92,14 @@ export default function Home() {
         setActiveFilters(state.activeFilters ?? []);
         setCustomFilters(state.customFilters ?? []);
         setEvents(state.events ?? eventsSeed as PublicEvent[]);
-        setCalendarEvents(state.calendarEvents ?? calendarSeed.events);
+        setCalendarEvents((state.calendarEvents ?? calendarSeed.events).filter((event: CalendarEvent) => event.id !== "lunch"));
         setAvailability(mergeAvailability(state.availability ?? calendarSeed.availability));
         setDistanceKm(state.distanceKm ?? 50);
         setFriendIds(state.friendIds ?? ["maya", "ryn", "mark"]);
         setProfile({ name: state.profile?.name ?? "Erin Chen", bio: state.profile?.bio ?? "", interests: state.profile?.interests ?? [...personById.erin.interests] });
         setAccountEmail(state.accountEmail ?? "erin.chen@university.edu");
         setProfileSettings(state.profileSettings ?? { calendarConnected: true, availabilityPrivacy: "connections", eventNotifications: true, friendNotifications: true, hideAttendees: false });
-        setNotifications(state.notifications ?? notificationSeed);
+        setNotifications((state.notifications ?? notificationSeed).map((notification: (typeof notificationSeed)[number]) => ({ ...notificationSeed.find((seed) => seed.id === notification.id), ...notification })));
         setCommunities(state.communities ?? communitySeed);
       } catch {
         localStorage.removeItem("scheduler-demo");
@@ -131,6 +131,18 @@ export default function Home() {
     const person = personById[id];
     if (!person) return;
     setSelectedPerson(person);
+  }
+
+  function respondToInvite(response: "accepted" | "declined" | "pending") {
+    if (!selectedNotification?.event || selectedNotification.category !== "invite") return;
+    const invitedEvent = selectedNotification.event as CalendarEvent;
+    setCalendarEvents((current) => {
+      const withoutInvite = current.filter((event) => event.id !== invitedEvent.id);
+      return response === "accepted" ? [...withoutInvite, invitedEvent] : withoutInvite;
+    });
+    setNotifications((current) => current.map((notification) => notification.id === selectedNotification.id ? { ...notification, response, unread: response === "pending" } : notification));
+    setSelectedNotification(null);
+    setToast(response === "accepted" ? "Invite accepted · added to calendar" : response === "declined" ? "Invite declined" : "Invite saved for later");
   }
 
   function saveProfile(event: FormEvent<HTMLFormElement>) {
@@ -518,7 +530,7 @@ export default function Home() {
 
           {confirmRemove && <Modal title={`Remove ${confirmRemove.name}?`} onClose={() => setConfirmRemove(null)}><p>They will be removed from your People list. You can add them again from a public event.</p><button className="danger wide" onClick={removeConfirmedFriend}>Remove friend</button><button className="text-button wide" onClick={() => setConfirmRemove(null)}>Cancel</button></Modal>}
 
-          {selectedNotification && <Modal title={selectedNotification.title} onClose={() => setSelectedNotification(null)}><p>{selectedNotification.body}</p><div className="detail-facts"><p><span>Received</span>{selectedNotification.time} ago</p></div><button className="primary wide" onClick={() => setSelectedNotification(null)}>Done</button></Modal>}
+          {selectedNotification && <Modal title={selectedNotification.title} onClose={() => setSelectedNotification(null)}><p>{selectedNotification.body}</p><div className="detail-facts"><p><span>Received</span>{selectedNotification.time} ago</p>{selectedNotification.category === "invite" && <p><span>Your response</span>{selectedNotification.response === "accepted" ? "Accepted" : selectedNotification.response === "declined" ? "Declined" : "Awaiting response"}</p>}</div>{selectedNotification.category === "invite" ? <div className="invite-response-actions"><button className={selectedNotification.response === "accepted" ? "selected" : ""} onClick={() => respondToInvite("accepted")}>✓ Accept</button><button className={selectedNotification.response === "declined" ? "selected decline" : "decline"} onClick={() => respondToInvite("declined")}>Decline</button><button className="later" onClick={() => respondToInvite("pending")}>Decide later</button></div> : <button className="primary wide" onClick={() => setSelectedNotification(null)}>Done</button>}</Modal>}
 
           {joinPending && <Modal title="You have a conflict" onClose={() => setJoinPending(null)}>
             <p className="conflict-copy">{joinPending.conflict}</p>
@@ -803,7 +815,7 @@ function SignInFlow({ email, onSignIn, onCreateAccount }: { email: string; onSig
 }
 
 function NotificationsScreen({ items, markAll, open, remove }: { items: typeof notificationSeed; markAll: () => void; open: (item: (typeof notificationSeed)[number]) => void; remove: (id: string) => void }) {
-  return <section><div className="section-heading"><div><h2>Recent</h2><p>Plans, changes, and shared time</p></div><button className="text-button" onClick={markAll}>Mark all read</button></div><div className="notification-list">{items.map((item) => <article key={item.id} className={item.unread ? "unread" : ""}><button className="notification-main" onClick={() => open(item)}><span className="notification-icon">{item.icon}</span><div><h3>{item.title}</h3><p>{item.body}</p><small>{item.time}</small></div>{item.unread && <i />}</button><button className="delete-notification" onClick={() => remove(item.id)} aria-label={`Delete ${item.title}`}>×</button></article>)}</div>{!items.length && <div className="empty-state"><h3>All clear</h3><p>You have no notifications.</p></div>}</section>;
+  return <section><div className="section-heading"><div><h2>Recent</h2><p>Plans, changes, and shared time</p></div><button className="text-button" onClick={markAll}>Mark all read</button></div><div className="notification-list">{items.map((item) => <article key={item.id} className={item.unread ? "unread" : ""}><button className="notification-main" onClick={() => open(item)}><span className="notification-icon">{item.icon}</span><div><h3>{item.title}</h3><p>{item.body}</p>{item.category === "invite" && <em className={`invite-response ${item.response ?? "pending"}`}>{item.response === "accepted" ? "Accepted" : item.response === "declined" ? "Declined" : "Response needed"}</em>}<small>{item.time}</small></div>{item.unread && <i />}</button><button className="delete-notification" onClick={() => remove(item.id)} aria-label={`Delete ${item.title}`}>×</button></article>)}</div>{!items.length && <div className="empty-state"><h3>All clear</h3><p>You have no notifications.</p></div>}</section>;
 }
 
 function ProfileScreen({ activeFilters, profile, settings, edit, openSettings }: { activeFilters: string[]; profile: Profile; settings: ProfileSettings; edit: () => void; openSettings: (panel: SettingsPanel | "filters") => void }) {
