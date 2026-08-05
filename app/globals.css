@@ -1,16 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #18201d;
-  --muted: #6b746f;
-  --line: #e5e9e6;
-  --paper: #f7f8f5;
+  --ink: #000000;
+  --muted: rgba(0, 0, 0, .58);
+  --line: #000000;
+  --paper: #ffffff;
   --white: #ffffff;
-  --lime: #d8f45b;
-  --lime-deep: #9cbc19;
-  --green: #1b715a;
-  --lavender: #7865d6;
-  --coral: #ef7969;
+  --lime: #000000;
+  --lime-deep: #000000;
+  --green: #000000;
+  --lavender: #000000;
+  --coral: #000000;
+  --event-class: #a8ccff;
+  --event-personal: #d9c7ff;
+  --event-private: #ffd28a;
+  --event-public: #9de4c0;
 }
 
 * { box-sizing: border-box; }
@@ -73,7 +77,7 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .week-scroll::-webkit-scrollbar { width: 8px; }
 .week-scroll::-webkit-scrollbar-track { background: #edf0ee; }
 .week-scroll::-webkit-scrollbar-thumb { border: 2px solid #edf0ee; border-radius: 8px; background: var(--green); }
-.week-grid { width: 100%; display: grid; grid-template-columns: 34px repeat(7, 49px); grid-template-rows: 48px 1392px; }
+.week-grid { width: 370px; display: grid; grid-template-columns: 34px repeat(7, 48px); grid-template-rows: 48px 1392px; }
 .day-head { position: sticky; top: 0; z-index: 3; background: white; display: grid; place-items: center; align-content: center; gap: 2px; border-bottom: 1px solid var(--line); }
 .day-head b { color: var(--muted); font-size: 7px; text-transform: uppercase; }
 .day-head span { font-size: 11px; font-weight: 700; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; }
@@ -288,9 +292,6 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .modal-layer { position: absolute; z-index: 30; inset: 0; display: flex; align-items: end; }
 .modal-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(17, 24, 21, .42); backdrop-filter: blur(2px); }
 .bottom-sheet { position: relative; z-index: 1; width: 100%; max-height: 79%; overflow: auto; padding: 9px 19px 24px; border-radius: 25px 25px 0 0; background: var(--paper); box-shadow: 0 -15px 45px rgba(10,20,15,.2); }
-.sheet-handle { width: 38px; height: 4px; margin: 0 auto 12px; border-radius: 2px; background: #c6ccc8; }
-.drag-handle { display: block; border: 0; padding: 0; touch-action: none; cursor: grab; }
-.drag-handle:active { cursor: grabbing; background: var(--green); }
 .sheet-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .sheet-title h2 { margin: 0; font-size: 19px; letter-spacing: -.4px; }
 .close-button { width: 31px; height: 31px; border: 0; border-radius: 50%; background: #e7ebe8; color: var(--ink); font-size: 20px; }
@@ -318,7 +319,7 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 .filter-results small { margin-top: 2px; color: var(--muted); font-size: 8px; }
 .filter-results i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-style: normal; background: #edf0ed; color: var(--green); }
 .filter-results i.checked { background: var(--green); color: white; }
-.filter-results .custom-filter { position: sticky; bottom: 0; border-style: dashed; border-color: #9cb3a6; background: #eef4ef; }
+.filter-results .custom-filter { position: static; border-style: dashed; border-color: #9cb3a6; background: #eef4ef; }
 .custom-filter:disabled { opacity: 1; cursor: not-allowed; background: #d8dfda !important; border-color: #aeb8b1 !important; color: #5e6962; }
 .interest-editor { display: flex; flex-wrap: wrap; gap: 6px; border: 0; padding: 0; margin: 0; }
 .interest-editor legend { width: 100%; margin-bottom: 5px; font-size: 9px; font-weight: 800; color: #4b5650; }
@@ -488,3 +489,376 @@ body { color: var(--ink); background: radial-gradient(circle at 30% 20%, #f5f1e7
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }
+
+/* Eventful monochrome visual system: colour is reserved for people and events. */
+body { background: #ffffff; color: #000000; }
+.phone { filter: drop-shadow(0 28px 44px rgba(0, 0, 0, .24)); }
+.app-viewport, .app-header, .bottom-nav { background: #ffffff; }
+.app-header { border-bottom: 1.5px solid #000000; }
+.eyebrow { color: #000000; }
+.screen-scroll { padding-top: 16px; scrollbar-color: #000000 #ffffff; }
+
+button, input, textarea, select { color: #000000; }
+.primary, .external-signup, .signup-custom-interest, .community-list .join { background: #000000; color: #ffffff; }
+.secondary, .ghost, .text-button { color: #000000; }
+.secondary { border-color: #000000; }
+.primary, .secondary, .ghost, .text-button, .danger, .danger-outline, .external-signup, .external-reset { border-radius: 12px; }
+.switch, .switch-input i { background: rgba(0, 0, 0, .2); border: 1px solid #000000; }
+.switch.on, .switch-input input:checked + i { background: #000000; }
+.switch i, .switch-input i::after { background: #ffffff; box-shadow: 0 0 0 1px #000000; }
+
+/* iOS-like floating tab bar with simple black outline icons. */
+.bottom-nav {
+  left: 14px;
+  right: 14px;
+  bottom: 10px;
+  height: 63px;
+  padding: 6px 12px 8px;
+  border: 1.5px solid #000000;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
+  backdrop-filter: blur(18px);
+}
+.bottom-nav button { color: #000000; border-radius: 14px; }
+.bottom-nav button span { color: #000000; font-weight: 800; }
+.bottom-nav button.active { color: #000000; background: rgba(0, 0, 0, .07); }
+.bottom-nav button.active span { transform: translateY(-1px); }
+.bottom-nav .create-nav span { color: #ffffff; background: #000000; box-shadow: 0 5px 0 rgba(0, 0, 0, .16); }
+
+/* Larger event cards with an outlined, lifted paper feel. */
+.event-list { gap: 17px; padding: 3px 1px 12px; }
+.event-card {
+  min-height: 126px;
+  border: 1.5px solid #000000;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, .14), 0 14px 24px rgba(0, 0, 0, .08);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.event-card:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0, 0, 0, .14); }
+.event-main { min-height: 124px; padding: 17px 44px 17px 15px; gap: 13px; }
+.date-tile { flex-basis: 54px; height: 60px; border: 1px solid #000000; border-radius: 14px; background: var(--event-public); }
+.date-tile b { color: #000000; }
+.date-tile span { font-size: 21px; }
+.event-copy h3 { margin-top: 5px; font-size: 15px; }
+.event-copy > p { color: rgba(0, 0, 0, .6); font-size: 9px; }
+.save-button { border: 1px solid #000000; background: #ffffff; color: #000000; }
+.save-button.saved { color: #000000; background: #000000; }
+.fit, .conflict, .availability-check { border: 1px solid #000000; background: #ffffff; color: #000000; }
+.mini-meta, .people-preview small, .people-preview em { color: rgba(0, 0, 0, .58); }
+
+/* Event type colour stays inside event objects; everything around it is monochrome. */
+.calendar-event {
+  border: 1px solid #000000;
+  border-left-width: 1px;
+  border-radius: 9px;
+  background: var(--event-class);
+  color: #000000;
+  box-shadow: none;
+}
+.calendar-event.personal { background: var(--event-personal); border-left-color: #000000; }
+.calendar-event.private { background: var(--event-private); border-left-color: #000000; }
+.calendar-event.public { background: var(--event-public); border-left-color: #000000; }
+.calendar-event em { border: 1px solid #000000; background: #ffffff; color: #000000; }
+.event-kind-dot { background: var(--event-personal); border: 1px solid #000000; }
+.event-kind-dot.public { background: var(--event-public); }
+.event-kind-dot.private { background: var(--event-private); }
+.my-events-list > button { border: 1px solid #000000; box-shadow: 0 5px 0 rgba(0, 0, 0, .12); }
+.day-head { z-index: 20; }
+.calendar-event { z-index: 2; }
+
+/* Availability and comparison overlays are patterns, not accent colours. */
+.availability-control, .calendar-friend-compare, .private-planning, .create-intro, .highlight-card {
+  border: 1px solid #000000;
+  background: #ffffff;
+  color: #000000;
+}
+.availability-key, .availability-block {
+  border-color: #000000;
+  background: repeating-linear-gradient(135deg, rgba(0, 0, 0, .18) 0 3px, #ffffff 3px 7px);
+  color: #000000;
+}
+.friend-availability { border-color: #000000; background: repeating-linear-gradient(45deg, rgba(0,0,0,.12) 0 3px, rgba(255,255,255,.8) 3px 7px); }
+.friend-availability span, .calendar-friend-compare > p, .compare-heading > button { color: #000000; }
+.compare-friend-list > button.selected { outline: 1px solid #000000; background: #ffffff; color: #000000; }
+.compare-friend-list i { border-color: #ffffff; background: #000000; }
+.current-time { background: #000000; }
+.current-time i { background: #000000; }
+.current-time span { color: #000000; background: #ffffff; }
+.drag-selection { border-color: #000000; background: rgba(0, 0, 0, .14); }
+.drag-selection span { color: #000000; }
+
+/* Black-and-white controls, lists and profile chrome. */
+.search-box, .filter-button, .date-pill, .segmented, .profile-card, .shared-card,
+.settings-list, .account-settings-entry, .connection-card, .notification-list article,
+.community-list article, .community-hero, .community-member-list button, .fact-card,
+.detail-facts p, .setting-choice, .toggle-row, .privacy-box, .invite-list > button,
+.filter-results button, .provider-button, .fake-account, .signup-card, .signup-search {
+  border-color: #000000;
+  background: #ffffff;
+  color: #000000;
+}
+.search-box, .signup-search { background: rgba(0, 0, 0, .05); }
+.segmented { border: 1px solid #000000; padding: 3px; }
+.segmented button.active { background: #000000; color: #ffffff; box-shadow: none; }
+.chip-row button, .tag-row span, .interest-editor button, .signup-interest-results button {
+  border: 1px solid #000000;
+  background: #ffffff;
+  color: #000000;
+}
+.interest-editor button.selected, .signup-interest-results button.selected, .invite-list > button.selected {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+.settings-list button > span, .account-settings-entry > span, .notification-icon,
+.community-mark, .community-hero > span, .modal-illustration, .create-intro > span {
+  border: 1px solid #000000;
+  background: #ffffff;
+  color: #000000;
+}
+.settings-list, .account-settings-entry, .connection-card, .community-list article,
+.community-member-list button, .profile-card { box-shadow: 0 5px 0 rgba(0, 0, 0, .1); }
+.profile-card, .community-hero, .shared-card { border-width: 1.5px; }
+.fact-card { border: 1px solid #000000; }
+.fact-card small { color: rgba(255, 255, 255, .7); }
+.verified { border: 1px solid #000000; background: #ffffff; color: #000000 !important; }
+.notification-list article.unread { background: rgba(0, 0, 0, .05); border-color: #000000; }
+.notification-main > i, .filter-button i { background: #000000; color: #ffffff; }
+.danger, .danger-outline, .reset-button, .external-reset, .remove-friend,
+.delete-notification, .community-list .leave, .invite-response-actions button.decline,
+.invite-response-actions button.decline.selected {
+  border-color: #000000;
+  background: #ffffff;
+  color: #000000;
+}
+.danger:active, .danger-outline:active, .reset-button:active, .remove-friend:active,
+.delete-notification:active, .community-list .leave:active { background: #000000; color: #ffffff; }
+.provider-button.google i, .provider-button.apple i, .provider-button.email i,
+.provider-account-mark.google, .provider-account-mark.apple, .create-account-link button { color: #000000; }
+.highlight-card p:not(.eyebrow), .community-list .leave, .connection-copy em,
+.signup-error, .conflict-copy { color: #000000; }
+.wizard-steps span, .wizard-steps span.done { background: #ffffff; color: #000000; border: 1px solid #000000; }
+.wizard-steps span.active { background: #000000; color: #ffffff; }
+.filter-results .custom-filter, .custom-filter:disabled {
+  border-color: #000000 !important;
+  background: #ffffff !important;
+  color: #000000;
+}
+.custom-filter:disabled { opacity: .38; }
+.signup-stage { border-color: #000000; background: #ffffff; box-shadow: 0 22px 50px rgba(0, 0, 0, .18); }
+.invite-response, .invite-response.accepted, .invite-response.declined,
+.conflict-card, .conflict-copy, .signup-error, .selected-interest-summary,
+.invite-summary, .invited-communities > div { border: 1px solid #000000; background: #ffffff; color: #000000; }
+
+/* Every pop-out floats above a strongly blurred copy of the current screen. */
+.modal-layer, .provider-popup-layer { align-items: center; padding: 14px; }
+.modal-backdrop, .provider-popup-backdrop {
+  background: rgba(255, 255, 255, .48);
+  backdrop-filter: blur(12px) saturate(0);
+}
+.bottom-sheet {
+  width: 100%;
+  max-height: 84%;
+  padding: 10px 20px 22px;
+  border: 1.5px solid #000000;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 18px 0 rgba(0, 0, 0, .13), 0 28px 60px rgba(0, 0, 0, .22);
+}
+.provider-popup { border: 1.5px solid #000000; background: #ffffff; box-shadow: 0 18px 0 rgba(0, 0, 0, .13), 0 28px 60px rgba(0, 0, 0, .22); }
+.fake-browser-bar { border-bottom: 1px solid #000000; background: #ffffff; }
+.fake-browser-bar i { background: #000000 !important; }
+.fake-browser-bar span { border: 1px solid #000000; background: #ffffff; color: #000000; }
+.toast { border: 1px solid #ffffff; background: #000000; color: #ffffff; }
+
+/* Requested medium outlines. */
+.app-header { border-bottom-width: 2px; }
+.bottom-nav, .event-card, .profile-card, .community-hero, .shared-card,
+.bottom-sheet, .provider-popup, .week-scroll,
+.search-box, .filter-button, .date-pill,
+.calendar-friend-compare, .availability-control, .private-planning, .segmented,
+.filter-control, .filter-results button,
+.connection-card, .notification-list article, .settings-list,
+.account-settings-entry, .community-list article, .community-member-list button,
+.my-events-list > button, .invite-list > button, .detail-facts p,
+.setting-choice, .toggle-row, .privacy-box {
+  border-width: 2px;
+}
+
+/* Flat presentation: no shadows or drop-shadows anywhere. */
+*, *::before, *::after { box-shadow: none !important; text-shadow: none !important; }
+.phone { filter: none !important; }
+*:focus-visible { outline: 2px solid #000000; outline-offset: 2px; }
+
+/* Lighter calendar layers and clearer spacing. */
+.date-tile { background: #ffffff; }
+.availability-block {
+  z-index: 5;
+  pointer-events: none;
+  border-color: rgba(22, 136, 77, .42);
+  background: rgba(69, 207, 132, .26);
+  color: #0b4f2a;
+}
+.calendar-event { background: rgba(90, 151, 232, .18); border-color: rgba(52, 106, 178, .38); }
+.calendar-event.personal { background: rgba(154, 116, 224, .18); border-color: rgba(103, 72, 166, .38); }
+.calendar-event.private { background: rgba(237, 158, 49, .18); border-color: rgba(178, 105, 19, .38); }
+.calendar-event.public { background: rgba(55, 188, 113, .18); border-color: rgba(26, 126, 70, .38); }
+.calendar-event em { display: none; }
+.fact-card + .detail-section, .conflict-card + .detail-section { margin-top: 16px; }
+
+.community-avatar {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #000000;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 850;
+}
+.community-avatar.small { width: 28px; height: 28px; font-size: 7px; }
+.community-avatar.large { width: 58px; height: 58px; font-size: 13px; }
+
+/* Clearer actions and Discovery hierarchy. */
+.sticky-join { color: #ffffff; font-size: 14px; }
+.primary, .secondary, .ghost, .text-button, .danger, .danger-outline, .reset-button { font-size: 12px; }
+.calendar-actions .primary, .calendar-actions .secondary, .calendar-actions .ghost { font-size: 10px; padding-inline: 8px; }
+.community-list article > button { font-size: 10px; }
+.connection-card { grid-template-columns: 1fr; }
+.connection-main { width: 100%; }
+.fit-row { height: auto; min-height: 16px; margin-bottom: 8px; }
+.event-copy h3 { margin: 0 0 6px; }
+.availability-key {
+  border: 1px solid rgba(22, 136, 77, .42);
+  background: rgba(69, 207, 132, .26);
+}
+
+/* Requested red states. */
+.current-time { background: #e3070e; }
+.current-time i { background: #e3070e; }
+.current-time span { color: #e3070e; }
+.save-button.saved { border-color: #e3070e; background: #ffffff; color: #e3070e; }
+
+.calendar-connect-list { display: grid; gap: 9px; }
+.calendar-provider {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 2px solid #000000;
+  border-radius: 13px;
+  background: #ffffff;
+}
+.calendar-provider > span { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #000000; border-radius: 50%; font-weight: 850; }
+.calendar-provider b, .calendar-provider small { display: block; }
+.calendar-provider b { font-size: 10px; }
+.calendar-provider small { margin-top: 2px; color: var(--muted); font-size: 8px; }
+.calendar-provider button { min-height: 34px; padding-inline: 9px; font-size: 9px; }
+
+/* Navigation icons matched to the supplied outline style. */
+.avatar-button { display: grid; place-items: center; }
+.bell-icon { position: relative; width: 21px; height: 23px; display: block; }
+.bell-icon::before { content: ""; position: absolute; left: 4px; top: 4px; width: 13px; height: 14px; border: 2px solid #000000; border-radius: 8px 8px 3px 3px; background: #ffffff; }
+.bell-icon::after { content: ""; position: absolute; left: 7px; bottom: 1px; width: 7px; height: 2px; border-top: 2px solid #000000; border-bottom: 2px solid #000000; }
+
+.nav-people-icon { position: relative; width: 27px; height: 24px; display: block; }
+.nav-people-icon i { position: absolute; top: 0; width: 14px; height: 23px; }
+.nav-people-icon i:first-child { left: 0; }
+.nav-people-icon i:last-child { right: 0; }
+.nav-people-icon i::before { content: ""; position: absolute; left: 3px; top: 0; width: 8px; height: 8px; border: 2px solid #000000; border-radius: 50%; background: #ffffff; }
+.nav-people-icon i::after { content: ""; position: absolute; left: 0; bottom: 0; width: 14px; height: 10px; border: 2px solid #000000; border-bottom: 0; border-radius: 9px 9px 0 0; }
+
+.nav-profile-icon { position: relative; width: 25px; height: 25px; display: block; border: 2px solid #000000; border-radius: 50%; }
+.nav-profile-icon i::before { content: ""; position: absolute; left: 7px; top: 4px; width: 7px; height: 7px; border: 2px solid #000000; border-radius: 50%; }
+.nav-profile-icon i::after { content: ""; position: absolute; left: 4px; bottom: 3px; width: 13px; height: 6px; border: 2px solid #000000; border-bottom: 0; border-radius: 8px 8px 0 0; }
+.bottom-nav button.active .nav-people-icon i::before, .bottom-nav button.active .nav-profile-icon { background: #ffffff; }
+
+/* Uniform 25px icon boxes across the bottom menu. */
+.bottom-nav button > span { width: 25px; height: 25px; display: grid; place-items: center; font-size: 22px; }
+.bottom-nav .create-nav span { width: 25px; height: 25px; margin-top: 0; font-size: 22px; }
+.nav-people-icon { width: 25px; height: 25px; }
+.setting-bell-icon { width: 21px !important; height: 23px !important; }
+
+.avatar-button > i { background: #e3070e; }
+
+/* Emphasize the central creation action without changing the other menu icons. */
+.bottom-nav .create-nav > span {
+  width: 38px;
+  height: 38px;
+  margin-top: -12px;
+  border-radius: 50%;
+  font-size: 27px;
+}
+
+/* Joined events remain monochrome but are unmistakable in Discovery. */
+.event-card.joined .date-tile { background: #000000; color: #ffffff; }
+.event-card.joined .date-tile b { color: #ffffff; }
+.fit-row { display: flex; align-items: center; gap: 5px; }
+.fit-row .joined-badge {
+  flex: 0 0 auto;
+  border: 1px solid #000000;
+  border-radius: 8px;
+  background: #000000;
+  color: #ffffff;
+  padding: 3px 6px;
+  font-size: 7px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+/* Public event sharing and invitations. */
+.event-detail { padding-bottom: 122px; }
+.event-social-actions { display: grid; gap: 8px; }
+.event-social-actions > h3 { margin-bottom: 0; }
+.event-social-actions > small { margin-top: -3px; color: rgba(0, 0, 0, .58); font-size: 8px; }
+.event-social-actions .primary:disabled { opacity: .38; cursor: not-allowed; }
+.event-join-dock {
+  position: absolute;
+  z-index: 6;
+  left: 18px;
+  right: 18px;
+  bottom: 76px;
+}
+.event-join-dock .sticky-join {
+  position: static;
+  width: 100%;
+  height: 48px;
+}
+
+/* Small first-visit guidance boxes anchored to Calendar actions. */
+.calendar-actions { position: relative; z-index: 12; }
+.calendar-actions.calendar-guide-active { margin-bottom: 112px; }
+.guided-calendar-action { position: relative; display: inline-flex; }
+.calendar-guide-tip {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: -50px;
+  width: 178px;
+  padding: 10px;
+  border: 2px solid #000000;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #000000;
+}
+.calendar-guide-tip.availability-tip { left: -92px; }
+.calendar-guide-tip b, .calendar-guide-tip small { display: block; }
+.calendar-guide-tip b { font-size: 10px; }
+.calendar-guide-tip small { margin: 4px 0 8px; font-size: 8px; line-height: 1.35; }
+.calendar-guide-tip > button { min-height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: #000000; color: #ffffff; font-size: 9px; font-weight: 800; }
+
+/* Dedicated completion page after creating a private event. */
+.private-event-confirmation { display: grid; gap: 12px; text-align: center; padding: 14px 0 24px; }
+.confirmation-mark { width: 58px; height: 58px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%; background: #000000; color: #ffffff; font-size: 28px; font-weight: 800; }
+.private-event-confirmation h2, .private-event-confirmation > p { margin: 0; }
+.private-event-confirmation h2 { font-size: 22px; }
+.private-event-confirmation > p:not(.eyebrow) { color: rgba(0, 0, 0, .62); font-size: 10px; }
+.private-event-confirmation .detail-facts { text-align: left; margin-bottom: 0; }
+.guest-share-card { padding: 14px; border: 2px solid #000000; border-radius: 16px; background: #ffffff; text-align: left; }
+.guest-share-card h3 { margin: 0; font-size: 14px; }
+.guest-share-card p { margin: 5px 0 12px; color: rgba(0, 0, 0, .62); font-size: 9px; line-height: 1.4; }
